@@ -15,7 +15,6 @@ LOG_DIR="$PROJECT_DIR/logs/sprint-$SPRINT_DATE"
 PROGRESS_FILE="$SCRIPT_DIR/sprint-progress.json"
 BRANCH_NAME="mvp-sprint"
 TOTAL_TASKS=24
-MAX_BUDGET_PER_TASK=1.00  # USD safety limit per claude session
 TASK_TIMEOUT=900           # 15 minutes in seconds
 
 RED='\033[0;31m'
@@ -378,7 +377,6 @@ Source it if needed: source .env"
     -p "$prompt" \
     --permission-mode "bypassPermissions" \
     --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
-    --max-budget-usd "$MAX_BUDGET_PER_TASK" \
     --no-session-persistence \
     > "$task_log_file" 2>&1 || exit_code=$?
 
