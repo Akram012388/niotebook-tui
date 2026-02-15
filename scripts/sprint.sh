@@ -393,3 +393,219 @@ Source it if needed: source .env"
   task_log "$task_num" "Claude session completed"
   return 0
 }
+
+# ── Summary Generation ──────────────────────────────────────────────
+generate_summary() {
+  local summary_file="$LOG_DIR/summary.md"
+  local completed=0 failed=0 skipped=0 pending=0
+
+  for i in $(seq 1 $TOTAL_TASKS); do
+    local status
+    status=$(get_task_status "$i")
+    case "$status" in
+      completed) ((completed++)) ;;
+      failed)    ((failed++)) ;;
+      skipped)   ((skipped++)) ;;
+      *)         ((pending++)) ;;
+    esac
+  done
+
+  local finished_at
+  finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  local started_at
+  started_at=$(jq -r '.started_at' "$PROGRESS_FILE")
+
+  cat > "$summary_file" <<SUMMARY
+# Sprint Summary — $SPRINT_DATE
+
+| Metric | Value |
+|--------|-------|
+| Branch | $BRANCH_NAME |
+| Started | $started_at |
+| Finished | $finished_at |
+| Completed | $completed / $TOTAL_TASKS |
+| Failed | $failed |
+| Skipped | $skipped |
+| Pending | $pending |
+
+## Task Results
+
+| Task | Name | Status | Attempts |
+|------|------|--------|----------|
+SUMMARY
+
+  for i in $(seq 1 $TOTAL_TASKS); do
+    local status attempts name
+    status=$(get_task_status "$i")
+    attempts=$(get_task_attempts "$i")
+    name="${TASK_NAMES[$i]}"
+    local icon
+    case "$status" in
+      completed) icon="pass" ;;
+      failed)    icon="FAIL" ;;
+      skipped)   icon="skip" ;;
+      *)         icon="----" ;;
+    esac
+    echo "| $i | $name | $icon $status | $attempts |" >> "$summary_file"
+  done
+
+  # Add failed task details
+  if (( failed > 0 )); then
+    echo "" >> "$summary_file"
+    echo "## Failed Tasks" >> "$summary_file"
+    echo "" >> "$summary_file"
+    for i in $(seq 1 $TOTAL_TASKS); do
+      local status
+      status=$(get_task_status "$i")
+      if [[ "$status" == "failed" ]]; then
+        local error
+        error=$(jq -r --arg t "$i" '.tasks[$t].error // "unknown"' "$PROGRESS_FILE")
+        echo "### Task $i: ${TASK_NAMES[$i]}" >> "$summary_file"
+        echo "" >> "$summary_file"
+        echo "Error: $error" >> "$summary_file"
+        echo "" >> "$summary_file"
+        echo "Log: \`logs/sprint-$SPRINT_DATE/task-$(printf '%02d' "$i").log\`" >> "$summary_file"
+        echo "" >> "$summary_file"
+      fi
+    done
+  fi
+
+  log "Summary written to $summary_file"
+}
+
+# ── Print Final Report ──────────────────────────────────────────────
+print_report() {
+  local completed=0 failed=0 skipped=0
+
+  for i in $(seq 1 $TOTAL_TASKS); do
+    local status
+    status=$(get_task_status "$i")
+    case "$status" in
+      completed) ((completed++)) ;;
+      failed)    ((failed++)) ;;
+      skipped)   ((skipped++)) ;;
+    esac
+  done
+
+  echo ""
+  echo -e "${BOLD}=== Sprint Complete ===${NC}"
+  echo ""
+  echo -e "  Completed: ${GREEN}$completed${NC} / $TOTAL_TASKS"
+  echo -e "  Failed:    ${RED}$failed${NC}"
+  echo -e "  Skipped:   ${YELLOW}$skipped${NC}"
+  echo ""
+  echo -e "  Progress:  $PROGRESS_FILE"
+  echo -e "  Logs:      $LOG_DIR/"
+  echo -e "  Summary:   $LOG_DIR/summary.md"
+  echo -e "  Branch:    $BRANCH_NAME"
+  echo ""
+
+  if (( failed == 0 && skipped == 0 )); then
+    echo -e "  ${GREEN}${BOLD}All $TOTAL_TASKS tasks completed successfully!${NC}"
+    echo -e "  Next: review the branch and merge when ready."
+  else
+    echo -e "  ${YELLOW}Review failed/skipped tasks in the summary and logs.${NC}"
+  fi
+  echo ""
+}
+
+# ── Main ────────────────────────────────────────────────────────────
+main() {
+  local resume=false
+  if [[ "${1:-}" == "--resume" ]]; then
+    resume=true
+  fi
+
+  cd "$PROJECT_DIR"
+
+  # Create log directory
+  mkdir -p "$LOG_DIR"
+
+  # Pre-flight
+  preflight
+
+  # Branch setup
+  setup_branch
+
+  # Initialize or load progress
+  if [[ "$resume" == true && -f "$PROGRESS_FILE" ]]; then
+    log "Resuming sprint from progress file..."
+    # Reset failed tasks to pending for retry
+    for i in $(seq 1 $TOTAL_TASKS); do
+      local status
+      status=$(get_task_status "$i")
+      if [[ "$status" == "failed" ]]; then
+        local tmp
+        tmp=$(mktemp)
+        jq --arg t "$i" \
+          '.tasks[$t].status = "pending" | .tasks[$t].attempts = 0 | .tasks[$t].error = null' \
+          "$PROGRESS_FILE" > "$tmp" && mv "$tmp" "$PROGRESS_FILE"
+        log "Reset task $i from failed to pending"
+      fi
+    done
+  else
+    init_progress
+  fi
+
+  echo ""
+  log "Starting sprint — $TOTAL_TASKS tasks on branch $BRANCH_NAME"
+  echo ""
+
+  # Main loop
+  for task_num in $(seq 1 $TOTAL_TASKS); do
+    local status
+    status=$(get_task_status "$task_num")
+    local task_name="${TASK_NAMES[$task_num]}"
+
+    # Skip completed
+    if [[ "$status" == "completed" ]]; then
+      task_log "$task_num" "Already completed, skipping"
+      continue
+    fi
+
+    # Skip already-skipped
+    if [[ "$status" == "skipped" ]]; then
+      task_log "$task_num" "Skipped (blocked by dependency)"
+      continue
+    fi
+
+    # Check dependencies
+    if ! check_deps "$task_num"; then
+      set_task_status "$task_num" "skipped"
+      set_task_error "$task_num" "dependency not met"
+      task_log "$task_num" "Skipped — dependency not met"
+      continue
+    fi
+
+    # Attempt 1
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    task_log "$task_num" "${BOLD}Task $task_num / $TOTAL_TASKS: $task_name${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    if run_task "$task_num" && verify_task "$task_num"; then
+      set_task_status "$task_num" "completed"
+      task_log "$task_num" "${GREEN}PASSED${NC}"
+    else
+      # Attempt 2 (retry)
+      task_log "$task_num" "${YELLOW}FAILED — retrying...${NC}"
+
+      if run_task "$task_num" && verify_task "$task_num"; then
+        set_task_status "$task_num" "completed"
+        task_log "$task_num" "${GREEN}PASSED on retry${NC}"
+      else
+        # Mark as failed, skip dependents
+        set_task_status "$task_num" "failed"
+        set_task_error "$task_num" "failed after 2 attempts — check logs/sprint-$SPRINT_DATE/task-$(printf '%02d' "$task_num").log"
+        task_log "$task_num" "${RED}FAILED after 2 attempts${NC}"
+        skip_dependents "$task_num"
+      fi
+    fi
+  done
+
+  # Generate summary
+  generate_summary
+  print_report
+}
+
+main "$@"
