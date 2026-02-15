@@ -27,6 +27,10 @@ vendor/
 # Niotebook config (local dev)
 auth.json
 
+# Sprint runner
+logs/
+scripts/sprint-progress.json
+
 # Obsidian (keep vault content, ignore workspace state)
 docs/vault/.obsidian/workspace.json
 docs/vault/.obsidian/workspace-mobile.json
