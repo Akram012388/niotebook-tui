@@ -181,3 +181,84 @@ func (m *mockRefreshTokenStore) DeleteExpired(_ context.Context) (int64, error) 
 	}
 	return count, nil
 }
+
+// mockPostStore implements store.PostStore with in-memory slices
+type mockPostStore struct {
+	mu    sync.Mutex
+	posts []models.Post
+}
+
+func newMockPostStore() *mockPostStore {
+	return &mockPostStore{
+		posts: make([]models.Post, 0),
+	}
+}
+
+func (m *mockPostStore) AddPost(id, authorID, content string, createdAt time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.posts = append(m.posts, models.Post{
+		ID:        id,
+		AuthorID:  authorID,
+		Content:   content,
+		CreatedAt: createdAt,
+	})
+}
+
+func (m *mockPostStore) CreatePost(_ context.Context, authorID, content string) (*models.Post, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	post := models.Post{
+		ID:        fmt.Sprintf("post-%d", len(m.posts)+1),
+		AuthorID:  authorID,
+		Content:   content,
+		CreatedAt: time.Now(),
+	}
+	m.posts = append(m.posts, post)
+	return &post, nil
+}
+
+func (m *mockPostStore) GetPostByID(_ context.Context, id string) (*models.Post, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.posts {
+		if m.posts[i].ID == id {
+			return &m.posts[i], nil
+		}
+	}
+	return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "post not found"}
+}
+
+func (m *mockPostStore) GetTimeline(_ context.Context, cursor time.Time, limit int) ([]models.Post, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var result []models.Post
+	for _, p := range m.posts {
+		if p.CreatedAt.Before(cursor) {
+			result = append(result, p)
+		}
+	}
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result, nil
+}
+
+func (m *mockPostStore) GetUserPosts(_ context.Context, userID string, cursor time.Time, limit int) ([]models.Post, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var result []models.Post
+	for _, p := range m.posts {
+		if p.AuthorID == userID && p.CreatedAt.Before(cursor) {
+			result = append(result, p)
+		}
+	}
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result, nil
+}
