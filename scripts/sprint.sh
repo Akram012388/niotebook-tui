@@ -9,6 +9,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Ensure Homebrew PostgreSQL is on PATH (keg-only on macOS)
+export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
+
 PLAN_FILE="docs/vault/04-plans/2026-02-16-mvp-implementation.md"
 SPRINT_DATE=$(date +%Y-%m-%d)
 LOG_DIR="$PROJECT_DIR/logs/sprint-$SPRINT_DATE"
