@@ -551,17 +551,17 @@ main() {
   # Initialize or load progress
   if [[ "$resume" == true && -f "$PROGRESS_FILE" ]]; then
     log "Resuming sprint from progress file..."
-    # Reset failed tasks to pending for retry
+    # Reset failed and skipped tasks to pending for retry
     for i in $(seq 1 $TOTAL_TASKS); do
       local status
       status=$(get_task_status "$i")
-      if [[ "$status" == "failed" ]]; then
+      if [[ "$status" == "failed" || "$status" == "skipped" ]]; then
         local tmp
         tmp=$(mktemp)
         jq --arg t "$i" \
           '.tasks[$t].status = "pending" | .tasks[$t].attempts = 0 | .tasks[$t].error = null' \
           "$PROGRESS_FILE" > "$tmp" && mv "$tmp" "$PROGRESS_FILE"
-        log "Reset task $i from failed to pending"
+        log "Reset task $i from $status to pending"
       fi
     done
   else
