@@ -189,3 +189,207 @@ skip_dependents() {
     done
   done
 }
+
+# ── Pre-Flight Checks ──────────────────────────────────────────────
+preflight() {
+  echo ""
+  echo -e "${BOLD}=== Niotebook MVP Sprint Runner ===${NC}"
+  echo ""
+  log "Running pre-flight checks..."
+  local ok=true
+
+  # Go
+  if command -v go >/dev/null 2>&1; then
+    log "  [✓] Go $(go version | grep -oE 'go[0-9]+\.[^ ]+')"
+  else
+    err "  [✗] Go not found"
+    ok=false
+  fi
+
+  # PostgreSQL
+  if pg_isready -q 2>/dev/null; then
+    log "  [✓] PostgreSQL running"
+  else
+    err "  [✗] PostgreSQL not running — run ./scripts/sprint-bootstrap.sh first"
+    ok=false
+  fi
+
+  # Databases
+  local user
+  user=$(whoami)
+  if psql -lqt 2>/dev/null | cut -d\| -f1 | grep -qw niotebook_dev; then
+    log "  [✓] niotebook_dev database"
+  else
+    err "  [✗] niotebook_dev database missing"
+    ok=false
+  fi
+  if psql -lqt 2>/dev/null | cut -d\| -f1 | grep -qw niotebook_test; then
+    log "  [✓] niotebook_test database"
+  else
+    err "  [✗] niotebook_test database missing"
+    ok=false
+  fi
+
+  # Tools
+  for tool in migrate golangci-lint jq claude; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      log "  [✓] $tool"
+    else
+      err "  [✗] $tool not found"
+      ok=false
+    fi
+  done
+
+  # Disk space (warn if < 5GB)
+  local free_gb
+  free_gb=$(df -g "$PROJECT_DIR" | tail -1 | awk '{print $4}')
+  if (( free_gb >= 5 )); then
+    log "  [✓] Disk space: ${free_gb}GB free"
+  else
+    warn "  [⚠] Low disk space: ${free_gb}GB free (< 5GB recommended)"
+  fi
+
+  # Plan file
+  if [[ -f "$PROJECT_DIR/$PLAN_FILE" ]]; then
+    log "  [✓] Implementation plan found"
+  else
+    err "  [✗] Implementation plan not found at $PLAN_FILE"
+    ok=false
+  fi
+
+  if [[ "$ok" == false ]]; then
+    echo ""
+    err "Pre-flight checks failed. Fix issues above or run ./scripts/sprint-bootstrap.sh"
+    exit 1
+  fi
+
+  echo ""
+  log "All pre-flight checks passed."
+}
+
+# ── Git Branch Setup ────────────────────────────────────────────────
+setup_branch() {
+  cd "$PROJECT_DIR"
+  local current_branch
+  current_branch=$(git branch --show-current)
+
+  if [[ "$current_branch" == "$BRANCH_NAME" ]]; then
+    log "Already on branch $BRANCH_NAME"
+    return
+  fi
+
+  if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
+    log "Switching to existing branch $BRANCH_NAME"
+    git checkout "$BRANCH_NAME"
+  else
+    log "Creating branch $BRANCH_NAME from main"
+    git checkout -b "$BRANCH_NAME"
+  fi
+}
+
+# ── Post-Task Verification ─────────────────────────────────────────
+verify_task() {
+  local task_num=$1
+  local verify_log="$LOG_DIR/task-$(printf '%02d' "$task_num")-verify.log"
+  local errors=0
+
+  task_log "$task_num" "Running verification..."
+
+  # 1. Code compiles
+  if go build ./... >> "$verify_log" 2>&1; then
+    task_log "$task_num" "  Build: PASS"
+  else
+    task_log "$task_num" "  Build: FAIL"
+    ((errors++))
+  fi
+
+  # 2. Tests pass (skip for task 1 which has no tests)
+  if [[ "$task_num" -gt 1 ]]; then
+    if go test ./... -v -race -timeout 120s >> "$verify_log" 2>&1; then
+      task_log "$task_num" "  Tests: PASS"
+    else
+      task_log "$task_num" "  Tests: FAIL"
+      ((errors++))
+    fi
+  else
+    task_log "$task_num" "  Tests: SKIPPED (task 1)"
+  fi
+
+  # 3. Auto-commit any leftover uncommitted changes
+  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+    task_log "$task_num" "  Auto-committing remaining changes..."
+    git add -A
+    git commit -m "chore: auto-commit remaining changes from task $task_num" --no-verify 2>/dev/null || true
+  fi
+
+  return "$errors"
+}
+
+# ── Run Claude Session for a Task ──────────────────────────────────
+run_task() {
+  local task_num=$1
+  local task_log_file="$LOG_DIR/task-$(printf '%02d' "$task_num").log"
+  local task_name="${TASK_NAMES[$task_num]}"
+
+  task_log "$task_num" "Starting: ${BOLD}$task_name${NC}"
+  set_task_started "$task_num"
+
+  # Build the prompt
+  local prompt
+  prompt="You are implementing the Niotebook MVP.
+
+Your working directory is $(pwd).
+
+Read the implementation plan at $PLAN_FILE.
+
+Execute ONLY Task $task_num: \"$task_name\" — follow every step exactly as written in the plan:
+- Create/modify the exact files specified
+- Run the exact commands specified
+- Verify the exact expected outputs
+- Commit with the exact commit message specified
+
+IMPORTANT:
+- Do NOT work on any other task besides Task $task_num.
+- Do NOT skip any steps.
+- Do NOT modify the plan's instructions.
+- If a test fails, debug and fix it before moving on.
+- After completing all steps, run: go build ./... && go test ./... -v -race
+- If the final build or tests fail, fix the issues.
+
+The .env file is at the project root with database connection details.
+Source it if needed: source .env"
+
+  # Check if PostgreSQL is needed (tasks 3+)
+  if [[ "$task_num" -ge 3 ]]; then
+    if ! pg_isready -q 2>/dev/null; then
+      task_log "$task_num" "PostgreSQL not responding, attempting restart..."
+      brew services restart postgresql@15 2>/dev/null || true
+      sleep 3
+      if ! pg_isready -q 2>/dev/null; then
+        err "PostgreSQL is down and could not be restarted"
+        return 1
+      fi
+    fi
+  fi
+
+  # Run Claude in non-interactive mode with timeout
+  local exit_code=0
+  CLAUDECODE= timeout "$TASK_TIMEOUT" claude \
+    -p "$prompt" \
+    --permission-mode "bypassPermissions" \
+    --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
+    --max-budget-usd "$MAX_BUDGET_PER_TASK" \
+    --no-session-persistence \
+    > "$task_log_file" 2>&1 || exit_code=$?
+
+  if [[ "$exit_code" -eq 124 ]]; then
+    task_log "$task_num" "TIMEOUT after ${TASK_TIMEOUT}s"
+    return 1
+  elif [[ "$exit_code" -ne 0 ]]; then
+    task_log "$task_num" "Claude exited with code $exit_code"
+    return 1
+  fi
+
+  task_log "$task_num" "Claude session completed"
+  return 0
+}
