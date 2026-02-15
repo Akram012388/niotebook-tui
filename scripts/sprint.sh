@@ -376,15 +376,34 @@ Source it if needed: source .env"
   fi
 
   # Run Claude in non-interactive mode with timeout
+  # macOS lacks `timeout`, so we use a background process + kill approach
   local exit_code=0
-  CLAUDECODE= timeout "$TASK_TIMEOUT" claude \
+  CLAUDECODE= claude \
     -p "$prompt" \
     --permission-mode "bypassPermissions" \
     --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
     --no-session-persistence \
-    > "$task_log_file" 2>&1 || exit_code=$?
+    > "$task_log_file" 2>&1 &
+  local claude_pid=$!
 
-  if [[ "$exit_code" -eq 124 ]]; then
+  # Watchdog: kill claude if it exceeds TASK_TIMEOUT
+  (
+    sleep "$TASK_TIMEOUT"
+    if kill -0 "$claude_pid" 2>/dev/null; then
+      kill "$claude_pid" 2>/dev/null
+    fi
+  ) &
+  local watchdog_pid=$!
+
+  # Wait for claude to finish
+  wait "$claude_pid" 2>/dev/null || exit_code=$?
+
+  # Clean up watchdog if claude finished before timeout
+  kill "$watchdog_pid" 2>/dev/null || true
+  wait "$watchdog_pid" 2>/dev/null || true
+
+  if [[ "$exit_code" -eq 143 ]]; then
+    # SIGTERM from watchdog = timeout
     task_log "$task_num" "TIMEOUT after ${TASK_TIMEOUT}s"
     return 1
   elif [[ "$exit_code" -ne 0 ]]; then
