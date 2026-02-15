@@ -1,7 +1,7 @@
 ---
 title: Niotebook Vault
 created: 2026-02-15
-updated: 2026-02-15
+updated: 2026-02-16
 tags: [home, index]
 ---
 
@@ -24,6 +24,10 @@ Welcome to the Niotebook project documentation. This vault contains all product 
 - **[[02-engineering/api/jwt-implementation|JWT Implementation]]** — token lifecycle, claims, refresh flow, security measures
 - **[[02-engineering/architecture/build-and-dev-workflow|Build & Dev Workflow]]** — Makefile, local setup, CLI flags, deployment, git conventions
 - **[[02-engineering/testing/testing-strategy|Testing Strategy]]** — unit, integration, TUI tests, CI pipeline, coverage targets
+
+### Plans
+- **[[04-plans/index|Implementation Plans Index]]** — phased implementation plans
+- **[[04-plans/2026-02-16-mvp-implementation|MVP Implementation Plan]]** — 24 tasks across 7 phases, TDD throughout
 
 ### Design
 - **[[03-design/index|Design Documents Index]]** — all design docs
@@ -68,6 +72,6 @@ It is **not** an X client. It is its own platform with its own backend, user acc
 
 ## Current Status
 
-**Phase:** Brainstorming & Architecture Design — COMPLETE
-**Next:** Implementation planning
+**Phase:** Implementation Planning — COMPLETE
+**Next:** Implementation (see [[04-plans/2026-02-16-mvp-implementation|MVP Implementation Plan]])
 **Target MVP:** Q2 2026
