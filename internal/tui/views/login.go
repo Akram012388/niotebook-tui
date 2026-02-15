@@ -11,9 +11,6 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 )
 
-// MsgSwitchToRegister tells the parent to switch to the register view.
-type MsgSwitchToRegister struct{}
-
 var (
 	formBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -117,7 +114,7 @@ func (m LoginModel) Update(msg tea.Msg) (LoginModel, tea.Cmd) {
 				return m, m.passwordInput.Focus()
 			}
 			// Tab on password field → switch to register view
-			return m, func() tea.Msg { return MsgSwitchToRegister{} }
+			return m, func() tea.Msg { return app.MsgSwitchToRegister{} }
 
 		case tea.KeyShiftTab:
 			if m.focusIndex == 1 {

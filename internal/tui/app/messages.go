@@ -35,6 +35,10 @@ type MsgProfileLoaded struct {
 }
 type MsgProfileUpdated struct{ User *models.User }
 
+// Navigation messages
+type MsgSwitchToRegister struct{}
+type MsgSwitchToLogin struct{}
+
 // Generic messages
 type MsgAPIError struct{ Message string }
 type MsgStatusClear struct{}

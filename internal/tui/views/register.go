@@ -12,9 +12,6 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 )
 
-// MsgSwitchToLogin tells the parent to switch to the login view.
-type MsgSwitchToLogin struct{}
-
 const (
 	usernameMinLen = 3
 	usernameMaxLen = 15
@@ -121,7 +118,7 @@ func (m RegisterModel) Update(msg tea.Msg) (RegisterModel, tea.Cmd) {
 func (m RegisterModel) nextField() (RegisterModel, tea.Cmd) {
 	if m.focusIndex >= 2 {
 		// Tab past last field → switch to login view
-		return m, func() tea.Msg { return MsgSwitchToLogin{} }
+		return m, func() tea.Msg { return app.MsgSwitchToLogin{} }
 	}
 
 	m.blurAll()
