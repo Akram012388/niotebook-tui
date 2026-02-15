@@ -48,26 +48,30 @@ CREATE TABLE users (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT users_username_unique UNIQUE (username),
     CONSTRAINT users_email_unique UNIQUE (email),
     CONSTRAINT users_username_length CHECK (char_length(username) >= 3),
     CONSTRAINT users_username_format CHECK (username ~ '^[a-z0-9]([a-z0-9_]*[a-z0-9])?$'),
     CONSTRAINT users_username_no_consecutive_underscores CHECK (username NOT LIKE '%__%'),
-    CONSTRAINT users_email_format CHECK (email ~ '^[^@]+@[^@]+\.[^@]+$')
+    CONSTRAINT users_email_format CHECK (email ~ '^[^@]+@[^@]+\.[^@]+$'),
+    CONSTRAINT users_bio_max_length CHECK (char_length(bio) <= 160),
+    CONSTRAINT users_display_name_max_length CHECK (char_length(display_name) <= 50)
 );
 ```
 
 **Notes:**
 - `username` is stored lowercase. Application lowercases before insert.
 - `password` stores bcrypt hash (60 chars). VARCHAR(255) provides headroom for algorithm changes.
-- `display_name` defaults to empty string. Application sets it to username on registration if not provided.
-- `bio` defaults to empty string, max 160 chars enforced at application level.
-- `email` has a basic format check at DB level. Full RFC 5322 validation at application level.
+- `display_name` defaults to empty string. On registration, the application sets it to the username if not provided. This means a newly registered user has `display_name == username`, never an empty display name.
+- `bio` max 160 chars enforced at **both** DB level (CHECK constraint) and application level.
+- `display_name` max 50 chars enforced at **both** DB level (CHECK constraint) and application level.
+- `email` has a basic format check at DB level. Application validates with Go's `net/mail.ParseAddress()` before insert.
 
 **Indexes:**
 ```sql
--- Unique indexes created implicitly by UNIQUE constraints on username and email
--- Additional index for case-insensitive email lookup:
+-- Case-insensitive unique index on username (since we store lowercase, this also prevents duplicates):
+CREATE UNIQUE INDEX idx_users_username_lower ON users (LOWER(username));
+
+-- Case-insensitive unique index on email:
 CREATE UNIQUE INDEX idx_users_email_lower ON users (LOWER(email));
 ```
 
@@ -180,14 +184,16 @@ CREATE TABLE users (
     bio          TEXT NOT NULL DEFAULT '',
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT users_username_unique UNIQUE (username),
     CONSTRAINT users_email_unique UNIQUE (email),
     CONSTRAINT users_username_length CHECK (char_length(username) >= 3),
     CONSTRAINT users_username_format CHECK (username ~ '^[a-z0-9]([a-z0-9_]*[a-z0-9])?$'),
     CONSTRAINT users_username_no_consecutive_underscores CHECK (username NOT LIKE '%__%'),
-    CONSTRAINT users_email_format CHECK (email ~ '^[^@]+@[^@]+\.[^@]+$')
+    CONSTRAINT users_email_format CHECK (email ~ '^[^@]+@[^@]+\.[^@]+$'),
+    CONSTRAINT users_bio_max_length CHECK (char_length(bio) <= 160),
+    CONSTRAINT users_display_name_max_length CHECK (char_length(display_name) <= 50)
 );
 
+CREATE UNIQUE INDEX idx_users_username_lower ON users (LOWER(username));
 CREATE UNIQUE INDEX idx_users_email_lower ON users (LOWER(email));
 ```
 

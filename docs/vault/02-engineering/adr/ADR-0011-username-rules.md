@@ -25,7 +25,7 @@ Username constraints:
 - **Case-insensitive uniqueness:** `@Akram` and `@akram` are the same user. Stored lowercase in the database, displayed as entered during registration.
 - **No leading/trailing underscores:** `_akram_` is rejected
 - **No consecutive underscores:** `akram__dev` is rejected
-- **Reserved usernames:** `admin`, `root`, `system`, `niotebook`, `api`, `help`, `support`, `me` (prevents confusion with system routes and UI elements)
+- **Reserved usernames:** `admin`, `root`, `system`, `niotebook`, `api`, `help`, `support`, `me`, `about`, `settings`, `login`, `register`, `auth`, `posts`, `users`, `timeline`, `search`, `explore` (prevents confusion with system routes, API paths, and UI elements). Authoritative list maintained in `internal/server/service/` at the application level.
 
 ### Regex
 

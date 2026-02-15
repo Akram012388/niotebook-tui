@@ -126,6 +126,7 @@ type Post struct {
 | GET | `/api/v1/users/{id}` | Yes | Get user profile |
 | GET | `/api/v1/users/{id}/posts` | Yes | Get user's posts |
 | PATCH | `/api/v1/users/me` | Yes | Update own profile |
+| GET | `/health` | No | Server health check |
 
 ## Database Schema (MVP)
 
@@ -181,20 +182,49 @@ User presses 'r'
 
 ## Technology Stack Summary
 
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| Language | Go 1.22+ | Concurrency, single binary, cross-compile |
-| TUI Framework | Bubble Tea | Elm architecture, mature ecosystem |
-| TUI Styling | Lip Gloss | CSS-like terminal styling |
-| TUI Widgets | Bubbles | Viewport, textarea, list, spinner |
-| HTTP Router | net/http (stdlib) | Go 1.22 pattern matching, zero dependencies |
-| Database | PostgreSQL | Relational, proven for social media |
-| DB Driver | pgx | High-performance native Postgres driver |
-| Migrations | golang-migrate | Versioned SQL migrations |
-| Auth | JWT (golang-jwt) | Stateless token auth |
-| Password | bcrypt (golang.org/x/crypto) | Industry standard password hashing |
-| Config | YAML (gopkg.in/yaml.v3) | User config files |
-| Reverse Proxy | Caddy | Auto-HTTPS, simple config |
+| Component | Technology | Import Path | Rationale |
+|-----------|-----------|-------------|-----------|
+| Language | Go 1.22+ | — | Concurrency, single binary, cross-compile |
+| TUI Framework | Bubble Tea | `github.com/charmbracelet/bubbletea` | Elm architecture, mature ecosystem |
+| TUI Styling | Lip Gloss | `github.com/charmbracelet/lipgloss` | CSS-like terminal styling |
+| TUI Widgets | Bubbles | `github.com/charmbracelet/bubbles` | Viewport, textarea, list, spinner, textinput |
+| HTTP Router | net/http | stdlib (Go 1.22+) | Pattern matching, zero dependencies |
+| Logging | slog | stdlib (Go 1.21+) | Structured JSON logging, zero dependencies |
+| Database | PostgreSQL 15+ | — | Relational, proven for social media |
+| DB Driver | pgx v5 | `github.com/jackc/pgx/v5` | High-performance native Postgres driver |
+| DB Pool | pgxpool | `github.com/jackc/pgx/v5/pgxpool` | Connection pooling for pgx |
+| Migrations | golang-migrate | `github.com/golang-migrate/migrate/v4` | Versioned SQL migrations |
+| JWT | golang-jwt v5 | `github.com/golang-jwt/jwt/v5` | Stateless token auth |
+| Password | bcrypt | `golang.org/x/crypto/bcrypt` | Industry standard password hashing |
+| Rate Limiting | x/time/rate | `golang.org/x/time/rate` | Per-IP token bucket |
+| Config | YAML v3 | `gopkg.in/yaml.v3` | User config files |
+| Reverse Proxy | Caddy | — (ops, not Go dep) | Auto-HTTPS, simple config |
+
+### Go Module
+
+```
+module github.com/Akram012388/niotebook-tui
+
+go 1.22
+```
+
+### Approximate go.mod Dependencies
+
+```
+require (
+    github.com/charmbracelet/bubbletea   v1.x
+    github.com/charmbracelet/bubbles     v0.x
+    github.com/charmbracelet/lipgloss    v1.x
+    github.com/jackc/pgx/v5              v5.x
+    github.com/golang-jwt/jwt/v5         v5.x
+    github.com/golang-migrate/migrate/v4 v4.x
+    golang.org/x/crypto                  v0.x
+    golang.org/x/time                    v0.x
+    gopkg.in/yaml.v3                     v3.x
+)
+```
+
+Exact versions will be pinned at `go mod init` time. These are the only direct dependencies (~9 total).
 
 ## Resolved Design Questions
 

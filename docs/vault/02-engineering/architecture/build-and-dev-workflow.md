@@ -23,8 +23,8 @@ tags: [engineering, build, development, workflow]
 
 ```bash
 # Clone the repo
-git clone https://github.com/CodeAkram/niotebook.git
-cd niotebook
+git clone https://github.com/Akram012388/niotebook-tui.git
+cd niotebook-tui
 
 # Install Go dependencies
 go mod download
@@ -72,16 +72,22 @@ NIOTEBOOK_LOG_LEVEL=debug
 ```makefile
 .PHONY: build server tui test lint migrate-up migrate-down clean dev
 
+# Version embedding
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+LDFLAGS  = -X github.com/Akram012388/niotebook-tui/internal/build.Version=$(VERSION) \
+           -X github.com/Akram012388/niotebook-tui/internal/build.CommitSHA=$(COMMIT)
+
 # Build both binaries
 build: server tui
 
 # Build server binary
 server:
-	go build -o bin/niotebook-server ./cmd/server
+	go build -ldflags "$(LDFLAGS)" -o bin/niotebook-server ./cmd/server
 
 # Build TUI binary
 tui:
-	go build -o bin/niotebook-tui ./cmd/tui
+	go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui ./cmd/tui
 
 # Run server in development mode (with auto-reload via air if installed)
 dev:
@@ -120,14 +126,15 @@ migrate-create:
 clean:
 	rm -rf bin/ coverage.out coverage.html
 
-# Cross-compile for release
+# Cross-compile for release (server: Linux only; TUI: macOS + Linux)
 release:
-	GOOS=linux GOARCH=amd64 go build -o bin/niotebook-server-linux-amd64 ./cmd/server
-	GOOS=linux GOARCH=arm64 go build -o bin/niotebook-server-linux-arm64 ./cmd/server
-	GOOS=darwin GOARCH=amd64 go build -o bin/niotebook-tui-darwin-amd64 ./cmd/tui
-	GOOS=darwin GOARCH=arm64 go build -o bin/niotebook-tui-darwin-arm64 ./cmd/tui
-	GOOS=linux GOARCH=amd64 go build -o bin/niotebook-tui-linux-amd64 ./cmd/tui
-	GOOS=linux GOARCH=arm64 go build -o bin/niotebook-tui-linux-arm64 ./cmd/tui
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-server-linux-amd64 ./cmd/server
+	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-server-linux-arm64 ./cmd/server
+	GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui-darwin-amd64 ./cmd/tui
+	GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui-darwin-arm64 ./cmd/tui
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui-linux-amd64 ./cmd/tui
+	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui-linux-arm64 ./cmd/tui
+	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/niotebook-tui-windows-amd64.exe ./cmd/tui
 ```
 
 ## Development Workflow
@@ -197,7 +204,7 @@ Flag parsing via Go's standard `flag` package (no Cobra for MVP — single comma
 ### go install
 
 ```bash
-go install github.com/CodeAkram/niotebook/cmd/tui@latest
+go install github.com/Akram012388/niotebook-tui/cmd/tui@latest
 ```
 
 Only the TUI is distributed via `go install`. The server is deployed by the operator, not installed by end users.

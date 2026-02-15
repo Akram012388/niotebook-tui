@@ -33,3 +33,5 @@ All significant technical decisions for Niotebook are recorded here with full co
 | [[ADR-0019-compact-post-cards\|ADR-0019]] | Compact post card design | Accepted | 2026-02-15 |
 | [[ADR-0020-compose-inline-modal\|ADR-0020]] | Inline compose modal | Accepted | 2026-02-15 |
 | [[ADR-0021-comprehensive-testing\|ADR-0021]] | Comprehensive testing strategy | Accepted | 2026-02-15 |
+| [[ADR-0022-multiline-posts\|ADR-0022]] | Multi-line posts allowed | Accepted | 2026-02-15 |
+| [[ADR-0023-health-endpoint\|ADR-0023]] | Health check endpoint | Accepted | 2026-02-15 |

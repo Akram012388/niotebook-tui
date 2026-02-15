@@ -137,9 +137,10 @@ Registration/Login
 
 ### Brute Force Protection
 
-- Login endpoint: rate-limited to 10 requests/minute per IP ([[02-engineering/adr/ADR-0014-rate-limiting|ADR-0014]])
-- After 5 failed login attempts from the same IP, the IP is blocked for 15 minutes
-- No account lockout (prevents DoS by locking out legitimate users)
+- Login endpoint: rate-limited to 10 requests/minute per IP with burst of 5 ([[02-engineering/adr/ADR-0014-rate-limiting|ADR-0014]])
+- After 5 rapid requests, the token bucket throttles. After 10 in a minute, all are rejected with 429.
+- No separate account lockout mechanism — rate limiting per IP handles brute force. Account lockout is avoided because it enables DoS attacks (attacker locks out a legitimate user by spamming login attempts).
+- See [[02-engineering/architecture/server-internals#Brute Force Protection|Server Internals]] for implementation details.
 
 ## Environment Variables
 

@@ -168,7 +168,10 @@ Create a new post. Requires authentication.
 
 **Validation:**
 - `content`: 1-140 characters (rune count), not empty, not whitespace-only
-- Content is trimmed of leading/trailing whitespace before validation and storage
+- Newlines are allowed (multi-line posts are supported, see [[02-engineering/adr/ADR-0022-multiline-posts|ADR-0022]])
+- Content is **trimmed** of leading/trailing whitespace before validation and storage
+- The 140-char limit is checked **after** trimming (e.g., `"  hello  "` becomes `"hello"` = 5 chars)
+- The TUI compose modal shows character count of **raw** (untrimmed) input, since trimming is server-side
 
 **Success Response (201 Created):**
 ```json
@@ -308,7 +311,16 @@ Get a user's posts (reverse chronological). Same pagination as timeline.
 }
 ```
 
-Posts in this endpoint do NOT include the nested `author` object (it's redundant — you already know whose posts these are). They include `author_id` only.
+Each post in this endpoint includes `author_id` but omits the nested `author` object (it's redundant — the caller already has the user profile from `GET /users/{id}`). Post structure:
+
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "author_id": "550e8400-e29b-41d4-a716-446655440000",
+  "content": "Hello Niotebook!",
+  "created_at": "2026-02-15T23:30:00Z"
+}
+```
 
 ### PATCH /api/v1/users/me
 
@@ -341,6 +353,30 @@ Update the authenticated user's profile. Only provided fields are updated.
 
 **Error Responses:**
 - `400 Bad Request` — `{"error": {"code": "validation_error", "message": "Display name must be 50 characters or fewer", "field": "display_name"}}`
+
+---
+
+## Health Endpoint
+
+### GET /health
+
+Server health check. No authentication required. Not rate limited.
+
+**Success Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "version": "0.1.0"
+}
+```
+
+**Failure Response (503 Service Unavailable):**
+```json
+{
+  "status": "error",
+  "message": "database connection failed"
+}
+```
 
 ---
 

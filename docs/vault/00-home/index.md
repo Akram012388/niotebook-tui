@@ -15,9 +15,11 @@ Welcome to the Niotebook project documentation. This vault contains all product 
 - **[[01-product/PRD|Product Requirements Document]]** — what we're building and why, user stories, non-functional requirements
 
 ### Engineering
-- **[[02-engineering/adr/index|Architecture Decision Records]]** — 21 ADRs covering every technical decision
+- **[[02-engineering/adr/index|Architecture Decision Records]]** — 23 ADRs covering every technical decision
 - **[[02-engineering/architecture/system-overview|System Architecture]]** — high-level system design, component diagram, tech stack
 - **[[02-engineering/architecture/database-schema|Database Schema]]** — tables, constraints, indexes, migrations, key queries
+- **[[02-engineering/architecture/bubble-tea-model-hierarchy|Bubble Tea Model Hierarchy]]** — TUI model structure, message types, async patterns, state management
+- **[[02-engineering/architecture/server-internals|Server Internals]]** — middleware, logging, graceful shutdown, health endpoint, background jobs
 - **[[02-engineering/api/api-specification|API Specification]]** — full REST API with exact request/response JSON formats
 - **[[02-engineering/api/jwt-implementation|JWT Implementation]]** — token lifecycle, claims, refresh flow, security measures
 - **[[02-engineering/architecture/build-and-dev-workflow|Build & Dev Workflow]]** — Makefile, local setup, CLI flags, deployment, git conventions
@@ -61,6 +63,8 @@ It is **not** an X client. It is its own platform with its own backend, user acc
 | Post cards | Compact (username + time + content) | [[02-engineering/adr/ADR-0019-compact-post-cards\|0019]] |
 | Compose | Inline modal overlay | [[02-engineering/adr/ADR-0020-compose-inline-modal\|0020]] |
 | Testing | Comprehensive (unit + integration + TUI) | [[02-engineering/adr/ADR-0021-comprehensive-testing\|0021]] |
+| Multi-line posts | Newlines allowed, count toward 140 limit | [[02-engineering/adr/ADR-0022-multiline-posts\|0022]] |
+| Health endpoint | GET /health for monitoring | [[02-engineering/adr/ADR-0023-health-endpoint\|0023]] |
 
 ## Current Status
 

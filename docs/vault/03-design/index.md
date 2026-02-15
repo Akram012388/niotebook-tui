@@ -25,6 +25,8 @@ Detailed component and feature design documents for Niotebook.
 | API Specification | [[02-engineering/api/api-specification\|API Spec]] | Full REST API with request/response formats |
 | JWT Implementation | [[02-engineering/api/jwt-implementation\|JWT Details]] | Token lifecycle, claims, refresh flow, security |
 | Database Schema | [[02-engineering/architecture/database-schema\|DB Schema]] | Tables, constraints, indexes, migrations, key queries |
+| Bubble Tea Models | [[02-engineering/architecture/bubble-tea-model-hierarchy\|Model Hierarchy]] | TUI model structure, message types, async patterns |
+| Server Internals | [[02-engineering/architecture/server-internals\|Internals]] | Middleware, logging, shutdown, health, background jobs |
 | Build & Dev Workflow | [[02-engineering/architecture/build-and-dev-workflow\|Build/Dev]] | Makefile, dev setup, CLI flags, deployment, git conventions |
 | Testing Strategy | [[02-engineering/testing/testing-strategy\|Testing]] | Unit, integration, TUI tests, CI pipeline, coverage targets |
 
