@@ -10,7 +10,7 @@ CREATE TABLE users (
     CONSTRAINT users_email_unique UNIQUE (email),
     CONSTRAINT users_username_length CHECK (char_length(username) >= 3),
     CONSTRAINT users_username_format CHECK (username ~ '^[a-z0-9]([a-z0-9_]*[a-z0-9])?$'),
-    CONSTRAINT users_username_no_consecutive_underscores CHECK (username NOT LIKE '%__%'),
+    CONSTRAINT users_username_no_consecutive_underscores CHECK (username NOT LIKE '%\_\_%'),
     CONSTRAINT users_email_format CHECK (email ~ '^[^@]+@[^@]+\.[^@]+$'),
     CONSTRAINT users_bio_max_length CHECK (char_length(bio) <= 160),
     CONSTRAINT users_display_name_max_length CHECK (char_length(display_name) <= 50)
