@@ -1,3 +1,5 @@
+> **Note:** This document is the original brainstorm that seeded the project. It has been superseded by the documentation vault at `docs/vault/`. The vault is the source of truth for all product, engineering, and design decisions. Key divergences from this document include: Niotebook is a standalone platform (not an X client), uses stdlib `net/http` (not Cobra), PostgreSQL (not BoltDB/Badger), and the MVP scope excludes likes, reposts, replies, and search.
+
 # Project Brief: Niotebook
 
 ## Project Overview

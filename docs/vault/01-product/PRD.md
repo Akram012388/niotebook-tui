@@ -3,7 +3,7 @@ title: "Product Requirements Document: Niotebook MVP"
 version: 0.1.0
 created: 2026-02-15
 updated: 2026-02-15
-status: draft
+status: accepted
 tags: [prd, product, mvp]
 ---
 
