@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -11,6 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Server wraps http.Server and manages background resources like the rate limiter.
+type Server struct {
+	HTTP        *http.Server
+	rateLimiter *middleware.RateLimiter
+}
+
+// Shutdown stops the rate limiter background goroutine and gracefully shuts down the HTTP server.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.rateLimiter.Stop()
+	return s.HTTP.Shutdown(ctx)
+}
+
 type Config struct {
 	JWTSecret  string
 	Host       string
@@ -18,7 +31,7 @@ type Config struct {
 	CORSOrigin string
 }
 
-func NewServer(cfg *Config, pool *pgxpool.Pool) *http.Server {
+func NewServer(cfg *Config, pool *pgxpool.Pool) *Server {
 	// Stores
 	userStore := store.NewUserStore(pool)
 	postStore := store.NewPostStore(pool)
@@ -61,11 +74,14 @@ func NewServer(cfg *Config, pool *pgxpool.Pool) *http.Server {
 	h = middleware.Logging(h)
 	h = middleware.Recovery(h)
 
-	return &http.Server{
-		Addr:         cfg.Host + ":" + cfg.Port,
-		Handler:      h,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	return &Server{
+		HTTP: &http.Server{
+			Addr:         cfg.Host + ":" + cfg.Port,
+			Handler:      h,
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 15 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		},
+		rateLimiter: rateLimiter,
 	}
 }

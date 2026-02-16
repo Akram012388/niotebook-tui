@@ -69,8 +69,8 @@ func main() {
 	srv := server.NewServer(cfg, pool)
 
 	go func() {
-		slog.Info("server starting", "addr", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Info("server starting", "addr", srv.HTTP.Addr)
+		if err := srv.HTTP.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "err", err)
 			os.Exit(1)
 		}
