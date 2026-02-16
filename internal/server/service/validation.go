@@ -29,25 +29,25 @@ func ValidateUsername(username string) error {
 	if length < 3 || length > 15 {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "username",
-			Message: "Username must be 3-15 characters",
+			Message: "username must be 3-15 characters",
 		}
 	}
 	if !usernameRegex.MatchString(lower) {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "username",
-			Message: "Username must be alphanumeric and underscores only, cannot start or end with underscore",
+			Message: "username must be alphanumeric and underscores only, cannot start or end with underscore",
 		}
 	}
 	if strings.Contains(lower, "__") {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "username",
-			Message: "Username cannot contain consecutive underscores",
+			Message: "username cannot contain consecutive underscores",
 		}
 	}
 	if reservedUsernames[lower] {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "username",
-			Message: "Username is reserved",
+			Message: "username is reserved",
 		}
 	}
 	return nil
@@ -58,13 +58,13 @@ func ValidatePostContent(content string) error {
 	if trimmed == "" {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "content",
-			Message: "Post content cannot be empty",
+			Message: "post content cannot be empty",
 		}
 	}
 	if utf8.RuneCountInString(trimmed) > 140 {
 		return &models.APIError{
 			Code: models.ErrCodeContentLong,
-			Message: "Post must be 140 characters or fewer",
+			Message: "post must be 140 characters or fewer",
 		}
 	}
 	if containsControlChars(trimmed, true) {
@@ -81,13 +81,13 @@ func ValidateEmail(email string) error {
 	if email == "" {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "email",
-			Message: "Email is required",
+			Message: "email is required",
 		}
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "email",
-			Message: "Invalid email format",
+			Message: "invalid email format",
 		}
 	}
 	return nil
@@ -98,13 +98,13 @@ func ValidateDisplayName(name string) error {
 	if name == "" || length > 50 {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "display_name",
-			Message: "Display name must be 1-50 characters",
+			Message: "display name must be 1-50 characters",
 		}
 	}
 	if containsControlChars(name, false) {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "display_name",
-			Message: "Display name contains invalid characters",
+			Message: "display name contains invalid characters",
 		}
 	}
 	return nil
@@ -114,13 +114,13 @@ func ValidateBio(bio string) error {
 	if utf8.RuneCountInString(bio) > 160 {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "bio",
-			Message: "Bio must be 160 characters or fewer",
+			Message: "bio must be 160 characters or fewer",
 		}
 	}
 	if bio != "" && containsControlChars(bio, true) {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "bio",
-			Message: "Bio contains invalid characters",
+			Message: "bio contains invalid characters",
 		}
 	}
 	return nil
@@ -144,7 +144,7 @@ func ValidatePassword(password string) error {
 	if len(password) < 8 {
 		return &models.APIError{
 			Code: models.ErrCodeValidation, Field: "password",
-			Message: "Password must be at least 8 characters",
+			Message: "password must be at least 8 characters",
 		}
 	}
 	return nil

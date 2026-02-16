@@ -33,10 +33,10 @@ func (s *userStore) CreateUser(ctx context.Context, username, email, passwordHas
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			if strings.Contains(pgErr.ConstraintName, "username") {
-				return nil, &models.APIError{Code: models.ErrCodeConflict, Message: "Username already taken", Field: "username"}
+				return nil, &models.APIError{Code: models.ErrCodeConflict, Message: "username already taken", Field: "username"}
 			}
 			if strings.Contains(pgErr.ConstraintName, "email") {
-				return nil, &models.APIError{Code: models.ErrCodeConflict, Message: "Email already registered", Field: "email"}
+				return nil, &models.APIError{Code: models.ErrCodeConflict, Message: "email already registered", Field: "email"}
 			}
 		}
 		return nil, fmt.Errorf("create user: %w", err)
@@ -56,7 +56,7 @@ func (s *userStore) GetUserByEmail(ctx context.Context, email string) (*models.U
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, "", &models.APIError{Code: models.ErrCodeUnauthorized, Message: "Invalid email or password"}
+			return nil, "", &models.APIError{Code: models.ErrCodeUnauthorized, Message: "invalid email or password"}
 		}
 		return nil, "", fmt.Errorf("get user by email: %w", err)
 	}
@@ -73,7 +73,7 @@ func (s *userStore) GetUserByID(ctx context.Context, id string) (*models.User, e
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "User not found"}
+			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "user not found"}
 		}
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
@@ -90,7 +90,7 @@ func (s *userStore) GetUserByUsername(ctx context.Context, username string) (*mo
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "User not found"}
+			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "user not found"}
 		}
 		return nil, fmt.Errorf("get user by username: %w", err)
 	}
@@ -100,7 +100,7 @@ func (s *userStore) GetUserByUsername(ctx context.Context, username string) (*mo
 
 func (s *userStore) UpdateUser(ctx context.Context, id string, updates *models.UserUpdate) (*models.User, error) {
 	setClauses := []string{}
-	args := []interface{}{}
+	args := []any{}
 	argIdx := 1
 
 	if updates.DisplayName != nil {

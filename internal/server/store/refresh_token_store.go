@@ -40,7 +40,7 @@ func (s *refreshTokenStore) GetByHash(ctx context.Context, tokenHash string) (id
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", "", time.Time{}, &models.APIError{Code: models.ErrCodeUnauthorized, Message: "Invalid refresh token"}
+			return "", "", time.Time{}, &models.APIError{Code: models.ErrCodeUnauthorized, Message: "invalid refresh token"}
 		}
 		return "", "", time.Time{}, fmt.Errorf("get refresh token by hash: %w", err)
 	}

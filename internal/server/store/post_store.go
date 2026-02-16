@@ -33,10 +33,10 @@ func (s *postStore) CreatePost(ctx context.Context, authorID, content string) (*
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23514" {
 			if pgErr.ConstraintName == "posts_content_max_length" {
-				return nil, &models.APIError{Code: models.ErrCodeContentLong, Message: "Post content exceeds 140 characters"}
+				return nil, &models.APIError{Code: models.ErrCodeContentLong, Message: "post content exceeds 140 characters"}
 			}
 			if pgErr.ConstraintName == "posts_content_not_empty" {
-				return nil, &models.APIError{Code: models.ErrCodeValidation, Message: "Post content cannot be empty", Field: "content"}
+				return nil, &models.APIError{Code: models.ErrCodeValidation, Message: "post content cannot be empty", Field: "content"}
 			}
 		}
 		return nil, fmt.Errorf("create post: %w", err)
@@ -59,7 +59,7 @@ func (s *postStore) GetPostByID(ctx context.Context, id string) (*models.Post, e
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "Post not found"}
+			return nil, &models.APIError{Code: models.ErrCodeNotFound, Message: "post not found"}
 		}
 		return nil, fmt.Errorf("get post by id: %w", err)
 	}

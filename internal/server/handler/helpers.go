@@ -8,7 +8,7 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/models"
 )
 
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(data)
@@ -18,13 +18,13 @@ func writeAPIError(w http.ResponseWriter, err error) {
 	var apiErr *models.APIError
 	if errors.As(err, &apiErr) {
 		status := errorCodeToHTTPStatus(apiErr.Code)
-		writeJSON(w, status, map[string]interface{}{"error": apiErr})
+		writeJSON(w, status, map[string]any{"error": apiErr})
 		return
 	}
-	writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+	writeJSON(w, http.StatusInternalServerError, map[string]any{
 		"error": models.APIError{
 			Code:    models.ErrCodeInternal,
-			Message: "Something went wrong. Please try again.",
+			Message: "something went wrong, please try again",
 		},
 	})
 }
@@ -48,7 +48,7 @@ func errorCodeToHTTPStatus(code string) int {
 	}
 }
 
-func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
+func decodeBody(w http.ResponseWriter, r *http.Request, v any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()

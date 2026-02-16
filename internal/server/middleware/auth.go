@@ -53,12 +53,12 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 
 			authHeader := r.Header.Get("Authorization")
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "Missing or invalid authorization header")
+				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "missing or invalid authorization header")
 				return
 			}
 
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 				return []byte(jwtSecret), nil
 			}, jwt.WithValidMethods([]string{"HS256"}))
 
@@ -67,13 +67,13 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 				if err != nil && errors.Is(err, jwt.ErrTokenExpired) {
 					code = models.ErrCodeTokenExpired
 				}
-				writeError(w, http.StatusUnauthorized, code, "Invalid or expired token")
+				writeError(w, http.StatusUnauthorized, code, "invalid or expired token")
 				return
 			}
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "Invalid token claims")
+				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "invalid token claims")
 				return
 			}
 
@@ -103,7 +103,7 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"error": map[string]string{
 			"code":    code,
 			"message": message,

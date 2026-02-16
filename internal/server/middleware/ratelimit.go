@@ -146,7 +146,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 				retryAfter = 1
 			}
 			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", retryAfter))
-			writeError(w, http.StatusTooManyRequests, "rate_limited", "Rate limited. Try again later.")
+			writeError(w, http.StatusTooManyRequests, "rate_limited", "rate limited, try again later")
 			return
 		}
 
