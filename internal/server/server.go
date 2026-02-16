@@ -11,9 +11,10 @@ import (
 )
 
 type Config struct {
-	JWTSecret string
-	Host      string
-	Port      string
+	JWTSecret  string
+	Host       string
+	Port       string
+	CORSOrigin string
 }
 
 func NewServer(cfg *Config, pool *pgxpool.Pool) *http.Server {
@@ -54,7 +55,7 @@ func NewServer(cfg *Config, pool *pgxpool.Pool) *http.Server {
 	rateLimiter := middleware.NewRateLimiter()
 	var h http.Handler = mux
 	h = middleware.Auth(cfg.JWTSecret)(h)
-	h = middleware.CORS(h)
+	h = middleware.CORS(cfg.CORSOrigin)(h)
 	h = rateLimiter.Middleware(h)
 	h = middleware.Logging(h)
 	h = middleware.Recovery(h)

@@ -51,6 +51,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	corsOrigin := envOrDefault("NIOTEBOOK_CORS_ORIGIN", "*")
+
 	// Database
 	ctx := context.Background()
 	pool, err := store.NewPool(ctx, dbURL)
@@ -60,7 +62,7 @@ func main() {
 	}
 
 	// Server
-	cfg := &server.Config{JWTSecret: jwtSecret, Host: *host, Port: *port}
+	cfg := &server.Config{JWTSecret: jwtSecret, Host: *host, Port: *port, CORSOrigin: corsOrigin}
 	srv := server.NewServer(cfg, pool)
 
 	go func() {
