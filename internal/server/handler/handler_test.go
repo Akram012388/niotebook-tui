@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
 	"github.com/Akram012388/niotebook-tui/internal/server/handler"
@@ -476,5 +479,341 @@ func TestEmptyTimeline(t *testing.T) {
 	}
 	if timelineResp.NextCursor != nil {
 		t.Error("empty timeline: next_cursor should be nil")
+	}
+}
+
+func TestRegisterDuplicateEmail(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register first user
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "emailuser1",
+		Email:    "same@example.com",
+		Password: "securepass123",
+	}, "")
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("first register: status = %d, want %d\nbody: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	// Try to register with same email but different username
+	rec = ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "emailuser2",
+		Email:    "same@example.com",
+		Password: "securepass123",
+	}, "")
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("dup email register: status = %d, want %d\nbody: %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	var errResp map[string]models.APIError
+	parseJSON(t, rec, &errResp)
+	if errResp["error"].Code != models.ErrCodeConflict {
+		t.Errorf("dup email register: error code = %q, want %q", errResp["error"].Code, models.ErrCodeConflict)
+	}
+}
+
+func TestCreatePostEmptyContent(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "emptypost",
+		Email:    "emptypost@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Try to create a post with whitespace-only content
+	rec = ts.do("POST", "/api/v1/posts", map[string]string{
+		"content": "   ",
+	}, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty post: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	var errResp map[string]models.APIError
+	parseJSON(t, rec, &errResp)
+	if errResp["error"].Code != models.ErrCodeValidation {
+		t.Errorf("empty post: error code = %q, want %q", errResp["error"].Code, models.ErrCodeValidation)
+	}
+}
+
+func TestTimelineCursorPagination(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "paginuser",
+		Email:    "pagin@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Create 5 posts with small delays to ensure distinct created_at timestamps
+	for i := 0; i < 5; i++ {
+		rec = ts.do("POST", "/api/v1/posts", map[string]string{
+			"content": fmt.Sprintf("Post number %d", i+1),
+		}, token)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create post %d: status = %d, want %d\nbody: %s", i+1, rec.Code, http.StatusCreated, rec.Body.String())
+		}
+		// Small delay to ensure distinct timestamps
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Fetch first page with limit=2
+	rec = ts.do("GET", "/api/v1/timeline?limit=2", nil, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("page 1: status = %d, want %d\nbody: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var page1 models.TimelineResponse
+	parseJSON(t, rec, &page1)
+	if len(page1.Posts) != 2 {
+		t.Fatalf("page 1: got %d posts, want 2", len(page1.Posts))
+	}
+	if !page1.HasMore {
+		t.Error("page 1: has_more should be true")
+	}
+	if page1.NextCursor == nil {
+		t.Fatal("page 1: next_cursor should not be nil")
+	}
+
+	// Fetch second page using the cursor (URL-encode to handle + in timezone)
+	rec = ts.do("GET", "/api/v1/timeline?limit=2&cursor="+url.QueryEscape(*page1.NextCursor), nil, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("page 2: status = %d, want %d\nbody: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var page2 models.TimelineResponse
+	parseJSON(t, rec, &page2)
+	if len(page2.Posts) != 2 {
+		t.Fatalf("page 2: got %d posts, want 2", len(page2.Posts))
+	}
+
+	// Verify no overlap between page 1 and page 2
+	page1IDs := make(map[string]bool)
+	for _, p := range page1.Posts {
+		page1IDs[p.ID] = true
+	}
+	for _, p := range page2.Posts {
+		if page1IDs[p.ID] {
+			t.Errorf("page 2 contains post %s which was already in page 1", p.ID)
+		}
+	}
+
+	// Fetch third page — should have 1 remaining post
+	if page2.NextCursor == nil {
+		t.Fatal("page 2: next_cursor should not be nil")
+	}
+	rec = ts.do("GET", "/api/v1/timeline?limit=2&cursor="+url.QueryEscape(*page2.NextCursor), nil, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("page 3: status = %d, want %d\nbody: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var page3 models.TimelineResponse
+	parseJSON(t, rec, &page3)
+	if len(page3.Posts) != 1 {
+		t.Fatalf("page 3: got %d posts, want 1", len(page3.Posts))
+	}
+	if page3.HasMore {
+		t.Error("page 3: has_more should be false")
+	}
+}
+
+func TestUpdateUserTooLongDisplayName(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "longname",
+		Email:    "longname@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Try to update with a 51-char display name
+	longName := strings.Repeat("a", 51)
+	rec = ts.do("PATCH", "/api/v1/users/me", models.UserUpdate{
+		DisplayName: &longName,
+	}, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("long display name: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	var errResp map[string]models.APIError
+	parseJSON(t, rec, &errResp)
+	if errResp["error"].Code != models.ErrCodeValidation {
+		t.Errorf("long display name: error code = %q, want %q", errResp["error"].Code, models.ErrCodeValidation)
+	}
+}
+
+func TestUpdateUserValidBio(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "biouser",
+		Email:    "biouser@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Update with a valid bio
+	newBio := "This is my new bio. Building cool things!"
+	rec = ts.do("PATCH", "/api/v1/users/me", models.UserUpdate{
+		Bio: &newBio,
+	}, token)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("update bio: status = %d, want %d\nbody: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var userResp map[string]models.User
+	parseJSON(t, rec, &userResp)
+	if userResp["user"].Bio != newBio {
+		t.Errorf("update bio: bio = %q, want %q", userResp["user"].Bio, newBio)
+	}
+}
+
+func TestGetUserByUsername(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register a user
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "lookupuser",
+		Email:    "lookup@example.com",
+		Password: "securepass123",
+	}, "")
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("register: status = %d, want %d\nbody: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+	userID := authResp.User.ID
+
+	// Get user by ID via GET /api/v1/users/{id}
+	rec = ts.do("GET", "/api/v1/users/"+userID, nil, token)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get user: status = %d, want %d\nbody: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var userResp map[string]models.User
+	parseJSON(t, rec, &userResp)
+	if userResp["user"].Username != "lookupuser" {
+		t.Errorf("get user: username = %q, want %q", userResp["user"].Username, "lookupuser")
+	}
+	if userResp["user"].ID != userID {
+		t.Errorf("get user: id = %q, want %q", userResp["user"].ID, userID)
+	}
+}
+
+func TestTimelineInvalidCursor(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "cursoruser",
+		Email:    "cursor@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Send an invalid cursor format
+	rec = ts.do("GET", "/api/v1/timeline?cursor=not-a-date", nil, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid cursor: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestTimelineInvalidLimit(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "limituser",
+		Email:    "limit@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+
+	// Send an invalid limit (0)
+	rec = ts.do("GET", "/api/v1/timeline?limit=0", nil, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid limit: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestGetUserPostsInvalidCursor(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "upcursor",
+		Email:    "upcursor@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+	userID := authResp.User.ID
+
+	// Send an invalid cursor format for user posts
+	rec = ts.do("GET", "/api/v1/users/"+userID+"/posts?cursor=bad-cursor", nil, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid user posts cursor: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestGetUserPostsInvalidLimit(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Register and get token
+	rec := ts.do("POST", "/api/v1/auth/register", models.RegisterRequest{
+		Username: "uplimit",
+		Email:    "uplimit@example.com",
+		Password: "securepass123",
+	}, "")
+
+	var authResp models.AuthResponse
+	parseJSON(t, rec, &authResp)
+	token := authResp.Tokens.AccessToken
+	userID := authResp.User.ID
+
+	// Send an invalid limit (101, over max)
+	rec = ts.do("GET", "/api/v1/users/"+userID+"/posts?limit=101", nil, token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid user posts limit: status = %d, want %d\nbody: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }
