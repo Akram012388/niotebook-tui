@@ -137,7 +137,7 @@ func TestDecodeBodyRejectsOversizedBody(t *testing.T) {
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := decodeBody(rec, req, &result); err == nil {
 		t.Error("expected error for oversized body, got nil")
 	}

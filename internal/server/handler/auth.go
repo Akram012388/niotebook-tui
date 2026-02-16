@@ -66,6 +66,6 @@ func HandleRefresh(authSvc *service.AuthService) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]interface{}{"tokens": tokens})
+		writeJSON(w, http.StatusOK, map[string]any{"tokens": tokens})
 	}
 }

@@ -30,7 +30,7 @@ func HandleGetUser(userSvc *service.UserService) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]interface{}{"user": user})
+		writeJSON(w, http.StatusOK, map[string]any{"user": user})
 	}
 }
 
@@ -120,6 +120,6 @@ func HandleUpdateUser(userSvc *service.UserService) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]interface{}{"user": user})
+		writeJSON(w, http.StatusOK, map[string]any{"user": user})
 	}
 }

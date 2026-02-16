@@ -36,7 +36,7 @@ func HandleCreatePost(postSvc *service.PostService) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]interface{}{"post": post})
+		writeJSON(w, http.StatusCreated, map[string]any{"post": post})
 	}
 }
 
@@ -57,6 +57,6 @@ func HandleGetPost(postSvc *service.PostService) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]interface{}{"post": post})
+		writeJSON(w, http.StatusOK, map[string]any{"post": post})
 	}
 }

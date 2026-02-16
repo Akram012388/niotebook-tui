@@ -202,7 +202,7 @@ func (c *Client) UpdateUser(updates *models.UserUpdate) (*models.User, error) {
 
 // doJSON performs an HTTP request, optionally with auth, and decodes the JSON response.
 // If withAuth is true and a 401 with token_expired is received, it attempts a refresh and retries.
-func (c *Client) doJSON(method, path string, body interface{}, dst interface{}, withAuth bool) error {
+func (c *Client) doJSON(method, path string, body any, dst any, withAuth bool) error {
 	resp, err := c.do(method, path, body, withAuth)
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func (c *Client) doJSON(method, path string, body interface{}, dst interface{}, 
 }
 
 // do performs the raw HTTP request with retry on network errors.
-func (c *Client) do(method, path string, body interface{}, withAuth bool) (*http.Response, error) {
+func (c *Client) do(method, path string, body any, withAuth bool) (*http.Response, error) {
 	const maxRetries = 3
 
 	var lastErr error
@@ -267,7 +267,7 @@ func (c *Client) do(method, path string, body interface{}, withAuth bool) (*http
 }
 
 // doOnce performs a single HTTP request attempt.
-func (c *Client) doOnce(method, path string, body interface{}, withAuth bool) (*http.Response, error) {
+func (c *Client) doOnce(method, path string, body any, withAuth bool) (*http.Response, error) {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		reqBody = &bytes.Buffer{}

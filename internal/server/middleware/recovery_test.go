@@ -24,11 +24,11 @@ func TestRecoveryMiddlewareCatchesPanic(t *testing.T) {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
 	}
 
-	var body map[string]interface{}
+	var body map[string]any
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	errObj, ok := body["error"].(map[string]interface{})
+	errObj, ok := body["error"].(map[string]any)
 	if !ok {
 		t.Fatal("expected error object in response")
 	}

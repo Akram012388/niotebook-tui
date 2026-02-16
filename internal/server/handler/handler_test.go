@@ -119,7 +119,7 @@ func setupTestServer(t *testing.T) *testServer {
 	}
 }
 
-func (ts *testServer) do(method, path string, body interface{}, token string) *httptest.ResponseRecorder {
+func (ts *testServer) do(method, path string, body any, token string) *httptest.ResponseRecorder {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		b, _ := json.Marshal(body)
@@ -139,7 +139,7 @@ func (ts *testServer) do(method, path string, body interface{}, token string) *h
 	return rec
 }
 
-func parseJSON(t *testing.T, rec *httptest.ResponseRecorder, v interface{}) {
+func parseJSON(t *testing.T, rec *httptest.ResponseRecorder, v any) {
 	t.Helper()
 	if err := json.NewDecoder(rec.Body).Decode(v); err != nil {
 		t.Fatalf("decode response: %v\nbody: %s", err, rec.Body.String())

@@ -43,7 +43,7 @@ func TestCreatePost(t *testing.T) {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"post": models.Post{ID: "new-1", Content: "Test post"},
 		})
 	}))
@@ -76,7 +76,7 @@ func TestAuthRefreshOn401(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		if r.URL.Path == "/api/v1/auth/refresh" {
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"tokens": models.TokenPair{
 					AccessToken:  "new-access",
 					RefreshToken: "new-refresh",
@@ -87,7 +87,7 @@ func TestAuthRefreshOn401(t *testing.T) {
 		if callCount == 1 {
 			// First call: return 401
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"error": map[string]string{"code": "token_expired"},
 			})
 			return
@@ -162,7 +162,7 @@ func TestGetPost(t *testing.T) {
 		if r.Method != "GET" || r.URL.Path != "/api/v1/posts/post-1" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"post": models.Post{ID: "post-1", Content: "A post"},
 		})
 	}))
@@ -185,7 +185,7 @@ func TestGetUser(t *testing.T) {
 		if r.Method != "GET" || r.URL.Path != "/api/v1/users/me" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"user": models.User{ID: "u1", Username: "akram"},
 		})
 	}))
@@ -232,7 +232,7 @@ func TestUpdateUser(t *testing.T) {
 		if r.Method != "PATCH" || r.URL.Path != "/api/v1/users/me" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"user": models.User{ID: "u1", Username: "akram", DisplayName: "New Name"},
 		})
 	}))
@@ -254,7 +254,7 @@ func TestUpdateUser(t *testing.T) {
 func TestOnTokenRefresh(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/auth/refresh" {
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"tokens": models.TokenPair{
 					AccessToken:  "new-at",
 					RefreshToken: "new-rt",
@@ -290,7 +290,7 @@ func TestOnTokenRefresh(t *testing.T) {
 func TestAPIErrorResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"error": map[string]string{
 				"code":    "validation_error",
 				"message": "content too short",

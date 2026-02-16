@@ -72,7 +72,7 @@ func TestPostJSONIncludesAuthor(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("unmarshal raw: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestPostJSONOmitsNilAuthor(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("unmarshal raw: %v", err)
 	}
