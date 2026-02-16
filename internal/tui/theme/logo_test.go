@@ -10,8 +10,13 @@ func TestLogoContainsExpectedParts(t *testing.T) {
 	if logo == "" {
 		t.Fatal("Logo() returned empty string")
 	}
+	// The logo renders "niotebook" with ANSI styling on the 'i'. Check raw
+	// characters are present (they will be interspersed with escape codes).
 	if !strings.Contains(logo, "n") {
 		t.Error("Logo() does not contain 'n'")
+	}
+	if !strings.Contains(logo, "i") {
+		t.Error("Logo() does not contain 'i'")
 	}
 	if !strings.Contains(logo, "otebook") {
 		t.Error("Logo() does not contain 'otebook'")
@@ -25,12 +30,12 @@ func TestLogoCompactReturnsNonEmpty(t *testing.T) {
 	}
 }
 
-func TestTaglineContainsSocialNotebook(t *testing.T) {
+func TestTaglineContainsSocialTerminal(t *testing.T) {
 	result := Tagline()
 	if result == "" {
 		t.Fatal("Tagline() returned empty string")
 	}
-	if !strings.Contains(result, "social notebook") {
-		t.Errorf("Tagline() should contain 'social notebook', got %q", result)
+	if !strings.Contains(result, "the social terminal") {
+		t.Errorf("Tagline() should contain 'the social terminal', got %q", result)
 	}
 }
