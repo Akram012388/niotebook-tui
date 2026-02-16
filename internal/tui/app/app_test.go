@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,13 +33,20 @@ func (s *stubProfile) Dismissed() bool { return false }
 type stubCompose struct {
 	stubViewModel
 	cancelled bool
+	expanded  bool
 }
 
 func (s *stubCompose) Submitted() bool          { return false }
 func (s *stubCompose) Cancelled() bool          { return s.cancelled }
-func (s *stubCompose) Expanded() bool           { return false }
-func (s *stubCompose) IsTextInputFocused() bool { return true }
-func (s *stubCompose) Expand()                  {}
+func (s *stubCompose) Expanded() bool           { return s.expanded }
+func (s *stubCompose) IsTextInputFocused() bool { return s.expanded }
+func (s *stubCompose) Expand()                  { s.expanded = true }
+func (s *stubCompose) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
+	if _, ok := msg.(app.MsgPostPublished); ok {
+		s.expanded = false
+	}
+	return s, nil
+}
 
 type stubHelp struct{ stubViewModel }
 
@@ -244,10 +252,10 @@ func TestAppModelPostPublished(t *testing.T) {
 	if !m.IsComposeOpen() {
 		t.Fatal("compose should be open")
 	}
-	// Publish post
+	// Publish post — compose collapses but is not nil
 	m = update(m, app.MsgPostPublished{Post: models.Post{ID: "1", Content: "Hello"}})
 	if m.IsComposeOpen() {
-		t.Error("compose should be closed after publish")
+		t.Error("compose should be collapsed (not expanded) after publish")
 	}
 }
 
@@ -272,10 +280,10 @@ func TestAppModelComposeCancelClosesOverlay(t *testing.T) {
 	if !m.IsComposeOpen() {
 		t.Fatal("compose should be open")
 	}
-	// Press Esc — stub compose returns cancelled=true on any key
+	// Press Esc — compose collapses (not nil, just not expanded)
 	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
 	if m.IsComposeOpen() {
-		t.Error("compose should be closed after cancel")
+		t.Error("compose should be collapsed after cancel")
 	}
 }
 
@@ -474,6 +482,60 @@ func TestAppModelNFromProfile(t *testing.T) {
 	}
 }
 
+func TestAppModelComposeCreatedOnServerConnected(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	// Compose should exist (always present) but not expanded
+	if m.IsComposeOpen() {
+		t.Error("compose should not be expanded by default")
+	}
+	// The view should render without panic — compose bar visible in center column
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view with inline compose bar")
+	}
+}
+
+func TestAppModelComposeBarRendersOnAuthenticatedViews(t *testing.T) {
+	renderFactory := &stubRenderFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, renderFactory, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// On timeline, compose bar output should be part of the view
+	view := m.View()
+	if !strings.Contains(view, "[compose-bar]") {
+		t.Error("expected compose bar to render inline on timeline view")
+	}
+
+	// Open profile — compose bar should still render
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	view = m.View()
+	if !strings.Contains(view, "[compose-bar]") {
+		t.Error("expected compose bar to render inline on profile view")
+	}
+}
+
+func TestAppModelComposeCreatedOnAuthSuccess(t *testing.T) {
+	// Test that compose is created during handleAuthSuccess if not yet created
+	m := app.NewAppModel(nil, nil)
+	// No factory initially, so compose won't be created
+	// But with factory and auth success, compose should be created
+	m2 := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m2 = update(m2, app.MsgServerConnected{})
+	// Now auth success — compose should exist after this
+	m2 = update(m2, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Compose exists but is not expanded
+	if m2.IsComposeOpen() {
+		t.Error("compose should not be expanded after auth")
+	}
+	_ = m // silence unused
+}
+
 func TestAppModelRegisterKeyRouting(t *testing.T) {
 	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	m = connectServer(m)
@@ -527,13 +589,21 @@ func (f *stubCancelFactory) NewCompose(_ *client.Client) app.ComposeViewModel {
 	return &stubCancelCompose{}
 }
 
-type stubCancelCompose struct{ stubViewModel }
+type stubCancelCompose struct {
+	stubViewModel
+	expanded bool
+}
 
 func (s *stubCancelCompose) Submitted() bool          { return false }
-func (s *stubCancelCompose) Cancelled() bool          { return true }
-func (s *stubCancelCompose) Expanded() bool           { return false }
-func (s *stubCancelCompose) IsTextInputFocused() bool { return true }
-func (s *stubCancelCompose) Expand()                  {}
+func (s *stubCancelCompose) Cancelled() bool          { return !s.expanded }
+func (s *stubCancelCompose) Expanded() bool           { return s.expanded }
+func (s *stubCancelCompose) IsTextInputFocused() bool { return s.expanded }
+func (s *stubCancelCompose) Expand()                  { s.expanded = true }
+func (s *stubCancelCompose) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
+	// Any key collapses — simulates Esc cancelling
+	s.expanded = false
+	return s, nil
+}
 
 // stubDismissFactory returns a help that dismisses immediately on any key
 type stubDismissFactory struct{ stubFactory }
@@ -558,6 +628,25 @@ type stubDismissProfile struct{ stubViewModel }
 func (s *stubDismissProfile) Editing() bool   { return false }
 func (s *stubDismissProfile) Dismissed() bool { return true }
 
+// stubRenderFactory returns compose that renders identifiable output
+type stubRenderFactory struct{ stubFactory }
+
+func (f *stubRenderFactory) NewCompose(_ *client.Client) app.ComposeViewModel {
+	return &stubRenderCompose{}
+}
+
+type stubRenderCompose struct {
+	stubViewModel
+	expanded bool
+}
+
+func (s *stubRenderCompose) Submitted() bool          { return false }
+func (s *stubRenderCompose) Cancelled() bool          { return false }
+func (s *stubRenderCompose) Expanded() bool           { return s.expanded }
+func (s *stubRenderCompose) IsTextInputFocused() bool { return s.expanded }
+func (s *stubRenderCompose) Expand()                  { s.expanded = true }
+func (s *stubRenderCompose) View() string             { return "[compose-bar]" }
+
 // stubTrackFactory tracks the timeline it creates for verification
 type stubTrackFactory struct {
 	stubFactory
@@ -571,7 +660,7 @@ func (f *stubTrackFactory) NewTimeline(_ *client.Client) app.TimelineViewModel {
 }
 
 func (f *stubTrackFactory) NewCompose(_ *client.Client) app.ComposeViewModel {
-	return &stubCompose{}
+	return &stubCompose{expanded: false}
 }
 
 // stubTrackTimeline tracks whether Update was called with MsgTimelineLoaded

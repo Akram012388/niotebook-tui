@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
@@ -29,7 +31,7 @@ type ViewModel interface {
 	HelpText() string
 }
 
-// ComposeViewModel is the interface for the compose overlay.
+// ComposeViewModel is the interface for the inline compose bar.
 type ComposeViewModel interface {
 	ViewModel
 	Submitted() bool
@@ -113,9 +115,11 @@ type AppModel struct {
 	timeline TimelineViewModel
 	profile  ProfileViewModel
 
-	// Overlays
+	// Inline compose bar (always present on authenticated views)
 	compose ComposeViewModel
-	help    HelpViewModel
+
+	// Overlays
+	help HelpViewModel
 }
 
 // NewAppModel creates the root app model. If storedAuth has a token, the model
@@ -149,9 +153,9 @@ func (m AppModel) CurrentView() View {
 	return m.currentView
 }
 
-// IsComposeOpen returns whether the compose overlay is active.
+// IsComposeOpen returns whether the compose bar is expanded.
 func (m AppModel) IsComposeOpen() bool {
-	return m.compose != nil
+	return m.compose != nil && m.compose.Expanded()
 }
 
 // FocusedColumn returns which column currently has keyboard focus.
@@ -162,7 +166,7 @@ func (m AppModel) FocusedColumn() layout.FocusColumn {
 // isTextInputFocused returns true when a text input is focused, so global
 // shortcuts like 'n', 'q', '?' should not fire.
 func (m AppModel) isTextInputFocused() bool {
-	if m.compose != nil {
+	if m.compose != nil && m.compose.Expanded() {
 		return true
 	}
 	switch m.currentView {
@@ -214,7 +218,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.help != nil {
 			return m.updateHelp(msg)
 		}
-		if m.compose != nil {
+		if m.compose != nil && m.compose.Expanded() {
 			return m.updateCompose(msg)
 		}
 
@@ -288,11 +292,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case MsgPostPublished:
-		m.compose = nil
-		if m.timeline != nil {
-			return m, m.timeline.FetchLatest()
+		var cmds []tea.Cmd
+		if m.compose != nil {
+			updated, cmd := m.compose.Update(msg)
+			if cv, ok := updated.(ComposeViewModel); ok {
+				m.compose = cv
+			}
+			cmds = append(cmds, cmd)
 		}
-		return m, nil
+		if m.timeline != nil {
+			cmds = append(cmds, m.timeline.FetchLatest())
+		}
+		return m, tea.Batch(cmds...)
 
 	case MsgProfileLoaded:
 		if m.profile != nil {
@@ -339,11 +350,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case MsgServerConnected:
-		// Server is reachable. Create login/register/timeline views now.
+		// Server is reachable. Create login/register/timeline/compose views now.
 		if m.factory != nil {
 			m.login = m.factory.NewLogin(m.client)
 			m.register = m.factory.NewRegister(m.client)
 			m.timeline = m.factory.NewTimeline(m.client)
+			m.compose = m.factory.NewCompose(m.client)
 		}
 		// Give newly created views their correct dimensions.
 		if m.width > 0 {
@@ -360,6 +372,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				updated, _ := m.timeline.Update(centerMsg)
 				if tl, ok := updated.(TimelineViewModel); ok {
 					m.timeline = tl
+				}
+			}
+			if m.compose != nil {
+				updated, _ := m.compose.Update(centerMsg)
+				if cv, ok := updated.(ComposeViewModel); ok {
+					m.compose = cv
 				}
 			}
 		}
@@ -435,15 +453,22 @@ func (m AppModel) View() string {
 		contentHeight = 1
 	}
 
-	// Center content
-	content := m.viewCurrentContent()
-	if m.help != nil {
-		content = m.help.View()
-	} else if m.compose != nil {
-		content = m.compose.View()
+	// Center content: compose bar at top + main content below.
+	var centerParts []string
+
+	// Inline compose bar (always shown on authenticated views).
+	if m.compose != nil && (m.currentView == ViewTimeline || m.currentView == ViewProfile) {
+		centerParts = append(centerParts, m.compose.View())
 	}
 
-	centerContent := content
+	// Main content.
+	if m.help != nil {
+		centerParts = append(centerParts, m.help.View())
+	} else {
+		centerParts = append(centerParts, m.viewCurrentContent())
+	}
+
+	centerContent := strings.Join(centerParts, "\n")
 
 	// Left sidebar
 	leftContent := components.RenderSidebar(
@@ -475,6 +500,11 @@ func (m AppModel) handleAuthSuccess(msg MsgAuthSuccess) (AppModel, tea.Cmd) {
 		m.client.SetRefreshToken(msg.Tokens.RefreshToken)
 	}
 
+	// Ensure compose bar exists for authenticated views.
+	if m.compose == nil && m.factory != nil {
+		m.compose = m.factory.NewCompose(m.client)
+	}
+
 	// Fetch timeline
 	if m.timeline != nil {
 		cmd := m.timeline.FetchLatest()
@@ -483,10 +513,10 @@ func (m AppModel) handleAuthSuccess(msg MsgAuthSuccess) (AppModel, tea.Cmd) {
 	return m, nil
 }
 
-// openCompose creates a new compose overlay.
+// openCompose expands the inline compose bar.
 func (m AppModel) openCompose() (AppModel, tea.Cmd) {
-	if m.factory != nil {
-		m.compose = m.factory.NewCompose(m.client)
+	if m.compose != nil {
+		m.compose.Expand()
 		cmd := m.compose.Init()
 		return m, cmd
 	}
@@ -499,7 +529,7 @@ func (m AppModel) openHelp() (AppModel, tea.Cmd) {
 		return m, nil
 	}
 	var viewName string
-	if m.compose != nil {
+	if m.compose != nil && m.compose.Expanded() {
 		viewName = HelpViewCompose
 	} else {
 		switch m.currentView {
@@ -530,7 +560,7 @@ func (m AppModel) openProfile(userID string, isOwn bool) (AppModel, tea.Cmd) {
 	return m, nil
 }
 
-// updateCompose routes messages to the compose overlay.
+// updateCompose routes messages to the compose bar.
 func (m AppModel) updateCompose(msg tea.Msg) (AppModel, tea.Cmd) {
 	var updated ViewModel
 	var cmd tea.Cmd
@@ -538,12 +568,7 @@ func (m AppModel) updateCompose(msg tea.Msg) (AppModel, tea.Cmd) {
 	if cv, ok := updated.(ComposeViewModel); ok {
 		m.compose = cv
 	}
-
-	if m.compose.Cancelled() {
-		m.compose = nil
-		return m, nil
-	}
-
+	// Compose auto-collapses on Esc/publish via its own Update logic.
 	return m, cmd
 }
 
@@ -665,7 +690,7 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 		cmds = append(cmds, cmd)
 	}
 
-	// Overlays: center column width.
+	// Inline compose bar: center column width.
 	if m.compose != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
