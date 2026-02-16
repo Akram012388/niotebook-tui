@@ -159,6 +159,117 @@ func TestProfileUser(t *testing.T) {
 	}
 }
 
+func TestProfileKeyNavigationJK(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	user := &models.User{
+		ID: "user-1", Username: "testuser", DisplayName: "Test",
+		Bio: "bio", CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+	posts := []models.Post{
+		{ID: "1", Content: "Post 1", Author: &models.User{Username: "testuser"}, CreatedAt: time.Now()},
+		{ID: "2", Content: "Post 2", Author: &models.User{Username: "testuser"}, CreatedAt: time.Now()},
+		{ID: "3", Content: "Post 3", Author: &models.User{Username: "testuser"}, CreatedAt: time.Now()},
+	}
+	m, _ = m.Update(app.MsgProfileLoaded{User: user, Posts: posts})
+
+	// Navigate down with j
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	// Navigate up with k
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	// Go to bottom with G
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}})
+	// Go to top with g
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty profile view")
+	}
+}
+
+func TestProfileArrowKeyNavigation(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	user := &models.User{
+		ID: "user-1", Username: "testuser",
+		CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+	posts := []models.Post{
+		{ID: "1", Content: "Post 1", Author: &models.User{Username: "testuser"}, CreatedAt: time.Now()},
+		{ID: "2", Content: "Post 2", Author: &models.User{Username: "testuser"}, CreatedAt: time.Now()},
+	}
+	m, _ = m.Update(app.MsgProfileLoaded{User: user, Posts: posts})
+
+	// Down arrow
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	// Up arrow
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+
+	if m.Dismissed() {
+		t.Error("navigation should not dismiss profile")
+	}
+}
+
+func TestProfileHelpTextOther(t *testing.T) {
+	m := views.NewProfileModel(nil, "other-user", false)
+	text := m.HelpText()
+	if text == "" {
+		t.Error("expected non-empty help text for other profile")
+	}
+	if strings.Contains(text, "edit") {
+		t.Error("other user's help text should not mention edit")
+	}
+}
+
+func TestProfileInitReturnsCmd(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	cmd := m.Init()
+	if cmd == nil {
+		t.Error("Init should return a fetch command")
+	}
+	// With nil client, the cmd should return an API error
+	msg := cmd()
+	if _, ok := msg.(app.MsgAPIError); !ok {
+		t.Errorf("expected MsgAPIError with nil client, got %T", msg)
+	}
+}
+
+func TestProfileUpdatedClearsEditing(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m, _ = m.Update(app.MsgProfileLoaded{
+		User:  &models.User{Username: "akram", CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)},
+		Posts: nil,
+	})
+
+	// Start editing
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	if !m.Editing() {
+		t.Fatal("expected editing after e key")
+	}
+
+	// Simulate profile update
+	m, _ = m.Update(app.MsgProfileUpdated{
+		User: &models.User{Username: "akram", Bio: "Updated bio", CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)},
+	})
+	if m.Editing() {
+		t.Error("expected editing to be false after profile update")
+	}
+}
+
+func TestProfileLoadingState(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	view := m.View()
+	if !strings.Contains(view, "Loading") {
+		t.Error("expected loading state")
+	}
+}
+
 func TestProfileEscSetsDismissed(t *testing.T) {
 	m := views.NewProfileModel(nil, "", true)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
