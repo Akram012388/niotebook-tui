@@ -116,6 +116,49 @@ func TestProfileEKeyOnOtherProfileDoesNotEdit(t *testing.T) {
 	}
 }
 
+func TestProfileHelpText(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	text := m.HelpText()
+	if text == "" {
+		t.Error("HelpText should return non-empty string")
+	}
+}
+
+func TestProfileIsOwn(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	if !m.IsOwn() {
+		t.Error("expected IsOwn to be true")
+	}
+
+	m2 := views.NewProfileModel(nil, "other-id", false)
+	if m2.IsOwn() {
+		t.Error("expected IsOwn to be false for other user")
+	}
+}
+
+func TestProfileUser(t *testing.T) {
+	m := views.NewProfileModel(nil, "", true)
+	// Before loading, User should be nil
+	if m.User() != nil {
+		t.Error("expected nil User before loading")
+	}
+
+	m, _ = m.Update(app.MsgProfileLoaded{
+		User: &models.User{
+			Username:  "akram",
+			CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+		},
+		Posts: nil,
+	})
+
+	if m.User() == nil {
+		t.Error("expected non-nil User after loading")
+	}
+	if m.User().Username != "akram" {
+		t.Errorf("User.Username = %q, want %q", m.User().Username, "akram")
+	}
+}
+
 func TestProfileEscSetsDismissed(t *testing.T) {
 	m := views.NewProfileModel(nil, "", true)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

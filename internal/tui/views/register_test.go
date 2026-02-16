@@ -54,6 +54,14 @@ func TestRegisterModelShiftTabNavigation(t *testing.T) {
 	}
 }
 
+func TestRegisterHelpText(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	text := m.HelpText()
+	if text == "" {
+		t.Error("HelpText should return non-empty string")
+	}
+}
+
 func TestRegisterModelAuthError(t *testing.T) {
 	m := views.NewRegisterModel(nil)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

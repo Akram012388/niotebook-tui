@@ -108,6 +108,29 @@ func TestComposePublishReturnsPostMessage(t *testing.T) {
 	}
 }
 
+func TestComposeHelpText(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	text := m.HelpText()
+	if text == "" {
+		t.Error("HelpText should return non-empty string")
+	}
+}
+
+func TestComposeIsTextInputFocused(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	// Compose model should always have text input focused
+	if !m.IsTextInputFocused() {
+		t.Error("expected IsTextInputFocused to be true")
+	}
+}
+
+func TestComposePosting(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	if m.Posting() {
+		t.Error("expected Posting to be false initially")
+	}
+}
+
 func TestComposeModelAPIError(t *testing.T) {
 	m := views.NewComposeModel(nil)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

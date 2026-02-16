@@ -73,7 +73,9 @@ func TestPostJSONIncludesAuthor(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("unmarshal raw: %v", err)
+	}
 
 	if _, ok := raw["author"]; !ok {
 		t.Error("expected author field in JSON")
@@ -94,7 +96,9 @@ func TestPostJSONOmitsNilAuthor(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("unmarshal raw: %v", err)
+	}
 
 	if _, ok := raw["author"]; ok {
 		t.Error("expected author field to be omitted when nil")

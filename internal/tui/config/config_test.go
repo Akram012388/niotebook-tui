@@ -19,7 +19,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 func TestLoadConfigFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	os.WriteFile(path, []byte("server_url: http://localhost:8080\n"), 0600)
+	if err := os.WriteFile(path, []byte("server_url: http://localhost:8080\n"), 0600); err != nil {
+		t.Fatalf("setup WriteFile: %v", err)
+	}
 
 	cfg, err := config.LoadFromFile(path)
 	if err != nil {

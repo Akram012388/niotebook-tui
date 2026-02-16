@@ -94,31 +94,6 @@ func (m TimelineModel) fetchTimeline(cursor string) tea.Cmd {
 	}
 }
 
-func (m TimelineModel) fetchMore() tea.Cmd {
-	if !m.hasMore || m.nextCursor == "" {
-		return nil
-	}
-	c := m.client
-	cursor := m.nextCursor
-	return func() tea.Msg {
-		if c == nil {
-			return app.MsgAPIError{Message: "no server connection"}
-		}
-		resp, err := c.GetTimeline(cursor, 20)
-		if err != nil {
-			return app.MsgAPIError{Message: err.Error()}
-		}
-		nextCursor := ""
-		if resp.NextCursor != nil {
-			nextCursor = *resp.NextCursor
-		}
-		return app.MsgTimelineLoaded{
-			Posts:      resp.Posts,
-			NextCursor: nextCursor,
-			HasMore:    resp.HasMore,
-		}
-	}
-}
 
 // Update handles messages for the timeline view.
 func (m TimelineModel) Update(msg tea.Msg) (TimelineModel, tea.Cmd) {

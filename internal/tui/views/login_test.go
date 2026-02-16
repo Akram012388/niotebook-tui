@@ -38,6 +38,31 @@ func TestLoginViewTabSwitchesField(t *testing.T) {
 	}
 }
 
+func TestLoginHelpText(t *testing.T) {
+	m := views.NewLoginModel(nil)
+	text := m.HelpText()
+	if text == "" {
+		t.Error("HelpText should return non-empty string")
+	}
+}
+
+func TestLoginShiftTabMovesFocus(t *testing.T) {
+	m := views.NewLoginModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	// Move to password
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if m.FocusIndex() != 1 {
+		t.Errorf("focus = %d, want 1", m.FocusIndex())
+	}
+
+	// Shift+Tab back to email
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if m.FocusIndex() != 0 {
+		t.Errorf("focus = %d after shift-tab, want 0", m.FocusIndex())
+	}
+}
+
 func containsAny(s string, substrs ...string) bool {
 	for _, sub := range substrs {
 		if strings.Contains(s, sub) {

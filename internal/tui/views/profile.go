@@ -1,7 +1,6 @@
 package views
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -284,7 +283,7 @@ func (m ProfileModel) View() string {
 	// Edit hint for own profile
 	if m.isOwn {
 		b.WriteString("\n")
-		b.WriteString(hintStyle.Render(fmt.Sprintf("[e] Edit profile")))
+		b.WriteString(hintStyle.Render("[e] Edit profile"))
 	}
 
 	return b.String()

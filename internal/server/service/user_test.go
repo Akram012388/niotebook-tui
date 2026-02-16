@@ -14,7 +14,9 @@ func TestGetUserByID(t *testing.T) {
 	svc := service.NewUserService(userStore)
 
 	// Seed a user via mock
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	user, err := svc.GetUserByID(context.Background(), "user-1")
 	if err != nil {
@@ -46,7 +48,9 @@ func TestUpdateUserDisplayName(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	newName := "New Display Name"
 	user, err := svc.UpdateUser(context.Background(), "user-1", &models.UserUpdate{
@@ -64,7 +68,9 @@ func TestUpdateUserDisplayNameEmpty(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	empty := ""
 	_, err := svc.UpdateUser(context.Background(), "user-1", &models.UserUpdate{
@@ -86,7 +92,9 @@ func TestUpdateUserDisplayNameTooLong(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	long := strings.Repeat("a", 51)
 	_, err := svc.UpdateUser(context.Background(), "user-1", &models.UserUpdate{
@@ -108,7 +116,9 @@ func TestUpdateUserBioTooLong(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	long := strings.Repeat("b", 161)
 	_, err := svc.UpdateUser(context.Background(), "user-1", &models.UserUpdate{
@@ -130,7 +140,9 @@ func TestUpdateUserBioValid(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	bio := "This is my bio"
 	user, err := svc.UpdateUser(context.Background(), "user-1", &models.UserUpdate{
@@ -148,7 +160,9 @@ func TestUpdateUserPartialUpdate(t *testing.T) {
 	userStore := newMockUserStore()
 	svc := service.NewUserService(userStore)
 
-	userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram")
+	if _, err := userStore.CreateUser(context.Background(), "akram", "akram@example.com", "hash", "Akram"); err != nil {
+		t.Fatalf("setup CreateUser: %v", err)
+	}
 
 	// Update only bio, display name should remain unchanged
 	bio := "New bio"

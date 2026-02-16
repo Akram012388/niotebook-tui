@@ -194,7 +194,7 @@ func (c *Client) UpdateUser(updates *models.UserUpdate) (*models.User, error) {
 	var wrapper struct {
 		User models.User `json:"user"`
 	}
-	if err := c.doJSON("PUT", "/api/v1/users/me", updates, &wrapper, true); err != nil {
+	if err := c.doJSON("PATCH", "/api/v1/users/me", updates, &wrapper, true); err != nil {
 		return nil, err
 	}
 	return &wrapper.User, nil
@@ -207,11 +207,10 @@ func (c *Client) doJSON(method, path string, body interface{}, dst interface{}, 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	// Handle 401 with transparent refresh
 	if resp.StatusCode == http.StatusUnauthorized && withAuth {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if _, err := c.Refresh(); err != nil {
 			return fmt.Errorf("token refresh failed: %w", err)
 		}
@@ -219,8 +218,8 @@ func (c *Client) doJSON(method, path string, body interface{}, dst interface{}, 
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close()
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		var errResp struct {

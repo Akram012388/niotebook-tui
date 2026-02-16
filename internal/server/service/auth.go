@@ -89,7 +89,7 @@ func (s *AuthService) Refresh(ctx context.Context, rawToken string) (*models.Tok
 	_ = id
 
 	if time.Now().After(expiresAt) {
-		s.tokens.DeleteByHash(ctx, tokenHash)
+		_ = s.tokens.DeleteByHash(ctx, tokenHash)
 		return nil, &models.APIError{Code: models.ErrCodeTokenExpired, Message: "refresh token has expired"}
 	}
 

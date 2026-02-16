@@ -25,7 +25,7 @@ func TestLoggingMiddlewarePassesThrough(t *testing.T) {
 func TestLoggingMiddlewareDefaultStatus(t *testing.T) {
 	handler := middleware.Logging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Don't call WriteHeader — should default to 200
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 
 	req := httptest.NewRequest("GET", "/health", nil)

@@ -68,9 +68,11 @@ func TestLogin(t *testing.T) {
 	auth := service.NewAuthService(userStore, tokenStore, "test-secret-32-bytes-long-xxxxx")
 
 	// Register first
-	auth.Register(context.Background(), &models.RegisterRequest{
+	if _, err := auth.Register(context.Background(), &models.RegisterRequest{
 		Username: "akram", Email: "akram@example.com", Password: "password123",
-	})
+	}); err != nil {
+		t.Fatalf("setup Register: %v", err)
+	}
 
 	// Login
 	resp, err := auth.Login(context.Background(), &models.LoginRequest{
@@ -89,9 +91,11 @@ func TestLoginWrongPassword(t *testing.T) {
 	tokenStore := newMockRefreshTokenStore()
 	auth := service.NewAuthService(userStore, tokenStore, "test-secret-32-bytes-long-xxxxx")
 
-	auth.Register(context.Background(), &models.RegisterRequest{
+	if _, err := auth.Register(context.Background(), &models.RegisterRequest{
 		Username: "akram", Email: "akram@example.com", Password: "password123",
-	})
+	}); err != nil {
+		t.Fatalf("setup Register: %v", err)
+	}
 
 	_, err := auth.Login(context.Background(), &models.LoginRequest{
 		Email: "akram@example.com", Password: "wrongpassword",

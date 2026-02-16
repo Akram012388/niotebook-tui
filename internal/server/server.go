@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/Akram012388/niotebook-tui/internal/server/handler"
 	"github.com/Akram012388/niotebook-tui/internal/server/middleware"
@@ -61,7 +62,10 @@ func NewServer(cfg *Config, pool *pgxpool.Pool) *http.Server {
 	h = middleware.Recovery(h)
 
 	return &http.Server{
-		Addr:    cfg.Host + ":" + cfg.Port,
-		Handler: h,
+		Addr:         cfg.Host + ":" + cfg.Port,
+		Handler:      h,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 }

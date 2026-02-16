@@ -176,3 +176,226 @@ func TestAppModelWindowResize(t *testing.T) {
 		t.Error("expected non-empty view after resize")
 	}
 }
+
+func TestAppModelInitWithFactory(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	cmd := m.Init()
+	// Init should return login's Init command (nil from stub)
+	_ = cmd
+}
+
+func TestAppModelPOpensOwnProfile(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	if m.CurrentView() != app.ViewProfile {
+		t.Errorf("view = %v, want ViewProfile after p", m.CurrentView())
+	}
+}
+
+func TestAppModelPostPublished(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open compose
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if !m.IsComposeOpen() {
+		t.Fatal("compose should be open")
+	}
+	// Publish post
+	m = update(m, app.MsgPostPublished{Post: models.Post{ID: "1", Content: "Hello"}})
+	if m.IsComposeOpen() {
+		t.Error("compose should be closed after publish")
+	}
+}
+
+func TestAppModelStatusClear(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, app.MsgStatusClear{})
+	// Should not panic
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after status clear")
+	}
+}
+
+func TestAppModelComposeCancelClosesOverlay(t *testing.T) {
+	cancelFactory := &stubCancelFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, cancelFactory)
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open compose
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if !m.IsComposeOpen() {
+		t.Fatal("compose should be open")
+	}
+	// Press Esc — stub compose returns cancelled=true on any key
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.IsComposeOpen() {
+		t.Error("compose should be closed after cancel")
+	}
+}
+
+func TestAppModelHelpDismissClosesOverlay(t *testing.T) {
+	dismissFactory := &stubDismissFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, dismissFactory)
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open help
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	// Dismiss with Esc — stub help returns dismissed=true on any key
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	// Help should be closed; view should not panic
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after help dismiss")
+	}
+}
+
+func TestAppModelRRefreshesTimeline(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Press r to refresh
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	// Should return a command (nil from stub FetchLatest)
+	_ = cmd
+}
+
+func TestAppModelProfileLoaded(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	// Send profile loaded
+	m = update(m, app.MsgProfileLoaded{
+		User:  &models.User{ID: "u1", Username: "akram"},
+		Posts: nil,
+	})
+	if m.CurrentView() != app.ViewProfile {
+		t.Errorf("view = %v, want ViewProfile", m.CurrentView())
+	}
+}
+
+func TestAppModelProfileUpdated(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	// Send profile updated
+	m = update(m, app.MsgProfileUpdated{
+		User: &models.User{ID: "u1", Username: "akram", DisplayName: "New Name"},
+	})
+	if m.CurrentView() != app.ViewProfile {
+		t.Errorf("view = %v, want ViewProfile", m.CurrentView())
+	}
+}
+
+func TestAppModelTimelineLoadedRouting(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, app.MsgTimelineLoaded{
+		Posts:   []models.Post{{ID: "1"}},
+		HasMore: false,
+	})
+	// Should not panic
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view")
+	}
+}
+
+func TestAppModelLoginViewRendering(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	// Before auth, should render login view
+	view := m.View()
+	_ = view // Just ensure no panic
+}
+
+func TestAppModelRegisterViewRendering(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgSwitchToRegister{})
+	view := m.View()
+	_ = view // Just ensure no panic
+}
+
+func TestAppModelProfileDismissReturnsToTimeline(t *testing.T) {
+	dismissProfileFactory := &stubDismissProfileFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, dismissProfileFactory)
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	if m.CurrentView() != app.ViewProfile {
+		t.Fatalf("view = %v, want ViewProfile", m.CurrentView())
+	}
+	// Key press triggers Dismissed()=true in stub
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.CurrentView() != app.ViewTimeline {
+		t.Errorf("view = %v, want ViewTimeline after profile dismiss", m.CurrentView())
+	}
+}
+
+// --- Additional stub factories for specific behaviors ---
+
+// stubCancelFactory returns a compose that cancels immediately on any key
+type stubCancelFactory struct{ stubFactory }
+
+func (f *stubCancelFactory) NewCompose(_ *client.Client) app.ComposeViewModel {
+	return &stubCancelCompose{}
+}
+
+type stubCancelCompose struct{ stubViewModel }
+
+func (s *stubCancelCompose) Submitted() bool          { return false }
+func (s *stubCancelCompose) Cancelled() bool          { return true }
+func (s *stubCancelCompose) IsTextInputFocused() bool { return true }
+
+// stubDismissFactory returns a help that dismisses immediately on any key
+type stubDismissFactory struct{ stubFactory }
+
+func (f *stubDismissFactory) NewHelp(_ string) app.HelpViewModel {
+	return &stubDismissHelp{}
+}
+
+type stubDismissHelp struct{ stubViewModel }
+
+func (s *stubDismissHelp) Dismissed() bool { return true }
+
+// stubDismissProfileFactory returns a profile that dismisses immediately on any key
+type stubDismissProfileFactory struct{ stubFactory }
+
+func (f *stubDismissProfileFactory) NewProfile(_ *client.Client, _ string, _ bool) app.ProfileViewModel {
+	return &stubDismissProfile{}
+}
+
+type stubDismissProfile struct{ stubViewModel }
+
+func (s *stubDismissProfile) Editing() bool   { return false }
+func (s *stubDismissProfile) Dismissed() bool { return true }

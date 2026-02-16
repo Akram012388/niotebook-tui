@@ -168,7 +168,6 @@ func TestFullFlow(t *testing.T) {
 		t.Error("register: access token is empty")
 	}
 
-	accessToken := authResp.Tokens.AccessToken
 	refreshToken := authResp.Tokens.RefreshToken
 	userID := authResp.User.ID
 
@@ -187,8 +186,8 @@ func TestFullFlow(t *testing.T) {
 	if loginResp.User.Username != "testuser" {
 		t.Errorf("login: username = %q, want %q", loginResp.User.Username, "testuser")
 	}
-	// Update tokens from login
-	accessToken = loginResp.Tokens.AccessToken
+	// Use tokens from login
+	accessToken := loginResp.Tokens.AccessToken
 
 	// 3. Create Post
 	rec = ts.do("POST", "/api/v1/posts", map[string]string{
