@@ -106,6 +106,80 @@ func TestGetUserByID(t *testing.T) {
 	}
 }
 
+func TestGetUserByUsername(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewUserStore(pool)
+	ctx := context.Background()
+
+	_, err := s.CreateUser(ctx, "testuser", "test@example.com", "$2a$12$fakehash", "testuser")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	user, err := s.GetUserByUsername(ctx, "testuser")
+	if err != nil {
+		t.Fatalf("GetUserByUsername: %v", err)
+	}
+	if user.Username != "testuser" {
+		t.Errorf("username = %q, want %q", user.Username, "testuser")
+	}
+}
+
+func TestGetUserByUsernameNotFound(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewUserStore(pool)
+	ctx := context.Background()
+
+	_, err := s.GetUserByUsername(ctx, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent username")
+	}
+}
+
+func TestGetUserByIDNotFound(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewUserStore(pool)
+	ctx := context.Background()
+
+	_, err := s.GetUserByID(ctx, "00000000-0000-0000-0000-000000000000")
+	if err == nil {
+		t.Fatal("expected error for nonexistent user ID")
+	}
+}
+
+func TestUpdateUserNoChanges(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewUserStore(pool)
+	ctx := context.Background()
+
+	created, _ := s.CreateUser(ctx, "akram", "akram@example.com", "$2a$12$hash", "akram")
+
+	user, err := s.UpdateUser(ctx, created.ID, &models.UserUpdate{})
+	if err != nil {
+		t.Fatalf("UpdateUser with no changes: %v", err)
+	}
+	if user.Username != "akram" {
+		t.Errorf("username = %q, want %q", user.Username, "akram")
+	}
+}
+
+func TestUpdateUserBioOnly(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewUserStore(pool)
+	ctx := context.Background()
+
+	created, _ := s.CreateUser(ctx, "akram", "akram@example.com", "$2a$12$hash", "akram")
+
+	newBio := "Hello world"
+	user, err := s.UpdateUser(ctx, created.ID, &models.UserUpdate{Bio: &newBio})
+	if err != nil {
+		t.Fatalf("UpdateUser bio only: %v", err)
+	}
+	if user.Bio != "Hello world" {
+		t.Errorf("bio = %q, want %q", user.Bio, "Hello world")
+	}
+}
+
 func TestUpdateUser(t *testing.T) {
 	pool := setupTestDB(t)
 	s := store.NewUserStore(pool)

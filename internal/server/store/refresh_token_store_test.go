@@ -85,6 +85,31 @@ func TestDeleteAllForUser(t *testing.T) {
 	}
 }
 
+func TestGetByHashNotFound(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewRefreshTokenStore(pool)
+	ctx := context.Background()
+
+	_, _, _, err := s.GetByHash(ctx, "nonexistent-hash")
+	if err == nil {
+		t.Fatal("expected error for nonexistent token hash")
+	}
+}
+
+func TestDeleteExpiredNoTokens(t *testing.T) {
+	pool := setupTestDB(t)
+	s := store.NewRefreshTokenStore(pool)
+	ctx := context.Background()
+
+	deleted, err := s.DeleteExpired(ctx)
+	if err != nil {
+		t.Fatalf("DeleteExpired: %v", err)
+	}
+	if deleted != 0 {
+		t.Errorf("expected 0 deleted, got %d", deleted)
+	}
+}
+
 func TestDeleteExpired(t *testing.T) {
 	pool := setupTestDB(t)
 	us := store.NewUserStore(pool)

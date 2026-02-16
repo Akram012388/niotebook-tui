@@ -176,6 +176,37 @@ func TestGetTimelineCursorPagination(t *testing.T) {
 	}
 }
 
+func TestGetUserPostsEmpty(t *testing.T) {
+	pool := setupTestDB(t)
+	us := store.NewUserStore(pool)
+	ps := store.NewPostStore(pool)
+	ctx := context.Background()
+
+	userID := createTestUser(t, us, "testuser", "test@example.com")
+
+	result, err := ps.GetUserPosts(ctx, userID, time.Now(), 10)
+	if err != nil {
+		t.Fatalf("GetUserPosts: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0 posts, got %d", len(result))
+	}
+}
+
+func TestGetTimelineEmpty(t *testing.T) {
+	pool := setupTestDB(t)
+	ps := store.NewPostStore(pool)
+	ctx := context.Background()
+
+	result, err := ps.GetTimeline(ctx, time.Now(), 10)
+	if err != nil {
+		t.Fatalf("GetTimeline: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0 posts, got %d", len(result))
+	}
+}
+
 func TestGetUserPosts(t *testing.T) {
 	pool := setupTestDB(t)
 	us := store.NewUserStore(pool)
