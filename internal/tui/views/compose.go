@@ -195,12 +195,14 @@ func (m ComposeModel) publish(content string) tea.Cmd {
 }
 
 func (m *ComposeModel) updateTextareaSize() {
-	// Account for border (2) and horizontal padding (2) = 4
-	innerWidth := m.width - 4
-	if innerWidth < 20 {
-		innerWidth = 20
+	// The expanded box style has: border (2) + padding (2) = 4 chars horizontal
+	// The textarea itself needs to fit inside that, so subtract 4 from m.width
+	boxWidth := m.width - 4
+	if boxWidth < 20 {
+		boxWidth = 20
 	}
-	m.textarea.SetWidth(innerWidth)
+	// Textarea width should match boxWidth exactly for clean hard-wrap
+	m.textarea.SetWidth(boxWidth)
 }
 
 // View renders the compose bar — either collapsed (single line) or expanded (textarea).
