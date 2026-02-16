@@ -60,16 +60,25 @@ func RenderPostCard(post models.Post, width int, selected bool, now time.Time) s
 	b.WriteString(relTime)
 	b.WriteString("\n")
 
-	// Content, word-wrapped with 2-char left padding
+	// Content, word-wrapped with 2-char left padding.
+	// Split by newlines first to preserve intentional line breaks,
+	// then wordwrap each paragraph individually.
 	contentWidth := width - 2
 	if contentWidth < 10 {
 		contentWidth = 10
 	}
-	wrapped := ansi.Wordwrap(post.Content, contentWidth, "")
-	for _, line := range strings.Split(wrapped, "\n") {
-		b.WriteString("  ")
-		b.WriteString(line)
-		b.WriteString("\n")
+	paragraphs := strings.Split(post.Content, "\n")
+	for _, para := range paragraphs {
+		if para == "" {
+			b.WriteString("  \n")
+			continue
+		}
+		wrapped := ansi.Wordwrap(para, contentWidth, "")
+		for _, line := range strings.Split(wrapped, "\n") {
+			b.WriteString("  ")
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
 	}
 
 	// Separator line
