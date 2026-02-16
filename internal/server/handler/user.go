@@ -106,7 +106,7 @@ func HandleUpdateUser(userSvc *service.UserService) http.HandlerFunc {
 		}
 
 		var updates models.UserUpdate
-		if err := decodeBody(r, &updates); err != nil {
+		if err := decodeBody(w, r, &updates); err != nil {
 			writeAPIError(w, &models.APIError{
 				Code:    models.ErrCodeValidation,
 				Message: "invalid request body",

@@ -10,7 +10,7 @@ import (
 func HandleRegister(authSvc *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.RegisterRequest
-		if err := decodeBody(r, &req); err != nil {
+		if err := decodeBody(w, r, &req); err != nil {
 			writeAPIError(w, &models.APIError{
 				Code:    models.ErrCodeValidation,
 				Message: "invalid request body",
@@ -31,7 +31,7 @@ func HandleRegister(authSvc *service.AuthService) http.HandlerFunc {
 func HandleLogin(authSvc *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.LoginRequest
-		if err := decodeBody(r, &req); err != nil {
+		if err := decodeBody(w, r, &req); err != nil {
 			writeAPIError(w, &models.APIError{
 				Code:    models.ErrCodeValidation,
 				Message: "invalid request body",
@@ -52,7 +52,7 @@ func HandleLogin(authSvc *service.AuthService) http.HandlerFunc {
 func HandleRefresh(authSvc *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.RefreshRequest
-		if err := decodeBody(r, &req); err != nil {
+		if err := decodeBody(w, r, &req); err != nil {
 			writeAPIError(w, &models.APIError{
 				Code:    models.ErrCodeValidation,
 				Message: "invalid request body",

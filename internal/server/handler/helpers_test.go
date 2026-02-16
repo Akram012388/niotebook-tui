@@ -105,11 +105,12 @@ func TestErrorCodeToHTTPStatus(t *testing.T) {
 func TestDecodeBody(t *testing.T) {
 	body := `{"username":"akram"}`
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+	rec := httptest.NewRecorder()
 
 	var result struct {
 		Username string `json:"username"`
 	}
-	if err := decodeBody(req, &result); err != nil {
+	if err := decodeBody(rec, req, &result); err != nil {
 		t.Fatalf("decodeBody: %v", err)
 	}
 	if result.Username != "akram" {
@@ -120,11 +121,12 @@ func TestDecodeBody(t *testing.T) {
 func TestDecodeBodyRejectsUnknownFields(t *testing.T) {
 	body := `{"username":"akram","extra":"field"}`
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+	rec := httptest.NewRecorder()
 
 	var result struct {
 		Username string `json:"username"`
 	}
-	if err := decodeBody(req, &result); err == nil {
+	if err := decodeBody(rec, req, &result); err == nil {
 		t.Error("expected error for unknown fields, got nil")
 	}
 }
@@ -133,9 +135,10 @@ func TestDecodeBodyRejectsOversizedBody(t *testing.T) {
 	// 4096 + 1 bytes should fail
 	body := strings.Repeat("a", 4097)
 	req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+	rec := httptest.NewRecorder()
 
 	var result map[string]interface{}
-	if err := decodeBody(req, &result); err == nil {
+	if err := decodeBody(rec, req, &result); err == nil {
 		t.Error("expected error for oversized body, got nil")
 	}
 }

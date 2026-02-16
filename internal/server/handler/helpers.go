@@ -48,8 +48,8 @@ func errorCodeToHTTPStatus(code string) int {
 	}
 }
 
-func decodeBody(r *http.Request, v interface{}) error {
-	r.Body = http.MaxBytesReader(nil, r.Body, 4096)
+func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)

@@ -22,7 +22,7 @@ func HandleCreatePost(postSvc *service.PostService) http.HandlerFunc {
 		var body struct {
 			Content string `json:"content"`
 		}
-		if err := decodeBody(r, &body); err != nil {
+		if err := decodeBody(w, r, &body); err != nil {
 			writeAPIError(w, &models.APIError{
 				Code:    models.ErrCodeValidation,
 				Message: "invalid request body",
