@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
+	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/views"
 )
 
@@ -66,4 +67,12 @@ func TestTimelineViewEmptyState(t *testing.T) {
 	if !strings.Contains(view, "No posts yet") {
 		t.Error("expected empty state message")
 	}
+}
+
+func TestTimelineModelAPIError(t *testing.T) {
+	m := views.NewTimelineModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	// Sending an error message should not panic
+	_, cmd := m.Update(app.MsgAPIError{Message: "server error"})
+	_ = cmd // Timeline may or may not produce a command from this
 }

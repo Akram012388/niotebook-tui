@@ -107,3 +107,10 @@ func TestComposePublishReturnsPostMessage(t *testing.T) {
 		t.Errorf("expected MsgAPIError with nil client, got %T", msg)
 	}
 }
+
+func TestComposeModelAPIError(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, cmd := m.Update(app.MsgAPIError{Message: "post too long"})
+	_ = cmd
+}
