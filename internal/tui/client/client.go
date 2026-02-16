@@ -3,11 +3,14 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
 )
@@ -25,8 +28,10 @@ type Client struct {
 // New creates a new API client pointing at the given base URL.
 func New(baseURL string) *Client {
 	return &Client{
-		baseURL:    baseURL,
-		httpClient: &http.Client{},
+		baseURL: baseURL,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 }
 
@@ -235,8 +240,35 @@ func (c *Client) doJSON(method, path string, body interface{}, dst interface{}, 
 	return nil
 }
 
-// do performs the raw HTTP request.
+// do performs the raw HTTP request with retry on network errors.
 func (c *Client) do(method, path string, body interface{}, withAuth bool) (*http.Response, error) {
+	const maxRetries = 3
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
+		}
+
+		resp, err := c.doOnce(method, path, body, withAuth)
+		if err == nil {
+			return resp, nil
+		}
+
+		// Only retry on network errors, not on successful HTTP responses
+		var netErr net.Error
+		if errors.As(err, &netErr) || errors.Is(err, net.ErrClosed) {
+			lastErr = err
+			continue
+		}
+		// Non-network error — don't retry
+		return nil, err
+	}
+	return nil, fmt.Errorf("request failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// doOnce performs a single HTTP request attempt.
+func (c *Client) doOnce(method, path string, body interface{}, withAuth bool) (*http.Response, error) {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		reqBody = &bytes.Buffer{}

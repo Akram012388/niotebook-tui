@@ -61,6 +61,16 @@ func TestCreatePost(t *testing.T) {
 	}
 }
 
+func TestClientTimeout(t *testing.T) {
+	c := client.New("http://198.51.100.1:1") // Non-routable IP — will timeout
+	c.SetToken("test-token")
+
+	_, err := c.GetTimeline("", 20)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+}
+
 func TestAuthRefreshOn401(t *testing.T) {
 	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
