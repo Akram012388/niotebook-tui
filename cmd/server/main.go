@@ -50,7 +50,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	corsOrigin := envOrDefault("NIOTEBOOK_CORS_ORIGIN", "*")
+	corsOrigin := os.Getenv("NIOTEBOOK_CORS_ORIGIN")
+	if corsOrigin == "" {
+		slog.Warn("NIOTEBOOK_CORS_ORIGIN not set, defaulting to localhost only")
+		corsOrigin = "http://localhost:3000"
+	}
 
 	// Database
 	ctx := context.Background()
