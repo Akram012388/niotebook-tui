@@ -9,6 +9,7 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 	"github.com/Akram012388/niotebook-tui/internal/tui/config"
+	"github.com/Akram012388/niotebook-tui/internal/tui/layout"
 )
 
 // stubViewModel is a minimal ViewModel for testing.
@@ -585,4 +586,112 @@ func (s *stubTrackTimeline) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
 		s.updated = true
 	}
 	return s, nil
+}
+
+// --- Column focus navigation tests ---
+
+func TestAppModelTabCyclesColumns(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// Default is center.
+	if got := m.FocusedColumn(); got != layout.FocusCenter {
+		t.Fatalf("initial focus = %v, want FocusCenter", got)
+	}
+
+	// Tab -> right.
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	if got := m.FocusedColumn(); got != layout.FocusRight {
+		t.Errorf("after 1st Tab focus = %v, want FocusRight", got)
+	}
+
+	// Tab -> left.
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	if got := m.FocusedColumn(); got != layout.FocusLeft {
+		t.Errorf("after 2nd Tab focus = %v, want FocusLeft", got)
+	}
+
+	// Tab -> center.
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	if got := m.FocusedColumn(); got != layout.FocusCenter {
+		t.Errorf("after 3rd Tab focus = %v, want FocusCenter", got)
+	}
+
+	// Should render without errors
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after Tab cycling")
+	}
+}
+
+func TestAppModelShiftTabCyclesReverse(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// Shift+Tab from center -> left.
+	m = update(m, tea.KeyMsg{Type: tea.KeyShiftTab})
+	if got := m.FocusedColumn(); got != layout.FocusLeft {
+		t.Errorf("after Shift+Tab focus = %v, want FocusLeft", got)
+	}
+
+	// Shift+Tab from left -> right.
+	m = update(m, tea.KeyMsg{Type: tea.KeyShiftTab})
+	if got := m.FocusedColumn(); got != layout.FocusRight {
+		t.Errorf("after 2nd Shift+Tab focus = %v, want FocusRight", got)
+	}
+
+	// Shift+Tab from right -> center.
+	m = update(m, tea.KeyMsg{Type: tea.KeyShiftTab})
+	if got := m.FocusedColumn(); got != layout.FocusCenter {
+		t.Errorf("after 3rd Shift+Tab focus = %v, want FocusCenter", got)
+	}
+
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after Shift+Tab")
+	}
+}
+
+func TestAppModelEscFromSideColumnReturnsToCenter(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// Tab to right
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	if got := m.FocusedColumn(); got != layout.FocusRight {
+		t.Fatalf("after Tab focus = %v, want FocusRight", got)
+	}
+
+	// Esc should reset to center
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if got := m.FocusedColumn(); got != layout.FocusCenter {
+		t.Errorf("after Esc focus = %v, want FocusCenter", got)
+	}
+
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after Esc from side column")
+	}
+}
+
+func TestAppModelNFromLeftColumnOpensCompose(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// Tab to right, then tab to left
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
+	if got := m.FocusedColumn(); got != layout.FocusLeft {
+		t.Fatalf("after 2 Tabs focus = %v, want FocusLeft", got)
+	}
+
+	// Press n — should open compose
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if !m.IsComposeOpen() {
+		t.Error("n from left column should open compose")
+	}
 }

@@ -103,6 +103,9 @@ type AppModel struct {
 	// Current view
 	currentView View
 
+	// Column focus
+	focus layout.FocusState
+
 	// Sub-models
 	splash   SplashViewModel
 	login    ViewModel
@@ -121,6 +124,7 @@ func NewAppModel(c *client.Client, storedAuth *config.StoredAuth) AppModel {
 	m := AppModel{
 		client:      c,
 		currentView: ViewLogin,
+		focus:       layout.NewFocusState(),
 	}
 	return m
 }
@@ -132,6 +136,7 @@ func NewAppModelWithFactory(c *client.Client, storedAuth *config.StoredAuth, f V
 		client:      c,
 		serverURL:   serverURL,
 		currentView: ViewSplash,
+		focus:       layout.NewFocusState(),
 		factory:     f,
 		storedAuth:  storedAuth,
 		splash:      f.NewSplash(serverURL),
@@ -147,6 +152,11 @@ func (m AppModel) CurrentView() View {
 // IsComposeOpen returns whether the compose overlay is active.
 func (m AppModel) IsComposeOpen() bool {
 	return m.compose != nil
+}
+
+// FocusedColumn returns which column currently has keyboard focus.
+func (m AppModel) FocusedColumn() layout.FocusColumn {
+	return m.focus.Active()
 }
 
 // isTextInputFocused returns true when a text input is focused, so global
@@ -208,9 +218,26 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateCompose(msg)
 		}
 
+		// Column navigation (disabled when text input focused)
+		if !m.isTextInputFocused() {
+			switch msg.Type {
+			case tea.KeyTab:
+				m.focus.Next()
+				return m, nil
+			case tea.KeyShiftTab:
+				m.focus.Prev()
+				return m, nil
+			}
+		}
+
 		// Global shortcuts (only when no text input focused)
 		if !m.isTextInputFocused() {
 			switch {
+			case msg.Type == tea.KeyEsc:
+				if m.focus.Active() != layout.FocusCenter {
+					m.focus.Reset()
+					return m, nil
+				}
 			case msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'n':
 				if m.currentView == ViewTimeline || m.currentView == ViewProfile {
 					return m.openCompose()
@@ -422,14 +449,14 @@ func (m AppModel) View() string {
 	leftContent := components.RenderSidebar(
 		m.user,
 		components.View(m.currentView),
-		false,
+		m.focus.Active() == layout.FocusLeft,
 		cols.Left,
 		contentHeight,
 	)
 
 	// Right sidebar — discover / trending panel
 	rightContent := components.RenderDiscover(
-		false,
+		m.focus.Active() == layout.FocusRight,
 		cols.Right,
 		contentHeight,
 	)
