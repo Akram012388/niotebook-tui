@@ -60,3 +60,23 @@ func TaglineSplash() string {
 	}
 	return strings.Join(parts, " ")
 }
+
+// LogoASCII returns a multi-line ASCII art rendering of "niotebook".
+// The dot on the letter 'i' is rendered in Accent color.
+// Designed to fit within a ~20 character wide sidebar column.
+func LogoASCII(_ int) string {
+	bold := lipgloss.NewStyle().Bold(true).Foreground(Text)
+	dot := lipgloss.NewStyle().Bold(true).Foreground(Accent)
+
+	// 3-line compact art: accent dot above, bold wordmark, separator
+	line1 := bold.Render("  ") + dot.Render("•")
+	line2 := bold.Render("n") + bold.Render("i") + bold.Render("otebook")
+	line3 := lipgloss.NewStyle().Foreground(Accent).Render("━━━━━━━━━")
+
+	return line1 + "\n" + line2 + "\n" + line3
+}
+
+// LogoSplashASCII returns the splash screen ASCII art variant.
+func LogoSplashASCII() string {
+	return LogoASCII(40)
+}
