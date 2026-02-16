@@ -14,6 +14,40 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
+// MinSplashDuration is the minimum time the splash screen stays visible so the
+// user can see the brand animation before transitioning.
+const MinSplashDuration = 2500 * time.Millisecond
+
+// BlockSpinnerFrames returns the four styled frames for the custom block
+// spinner. Each frame is a string of three block characters separated by
+// spaces, progressively filling from light shade to full block.
+func BlockSpinnerFrames() []string {
+	border := lipgloss.NewStyle().Foreground(theme.Border)
+	accent := lipgloss.NewStyle().Foreground(theme.Accent)
+
+	light := border.Render("░")
+	full := accent.Render("█")
+
+	return []string{
+		light + " " + light + " " + light, // ░ ░ ░
+		full + " " + light + " " + light,  // █ ░ ░
+		full + " " + full + " " + light,   // █ █ ░
+		full + " " + full + " " + full,    // █ █ █
+	}
+}
+
+// newBlockSpinner creates a spinner.Model configured with the custom block
+// spinner frames at 300ms per frame.
+func newBlockSpinner() spinner.Model {
+	frames := BlockSpinnerFrames()
+	s := spinner.New()
+	s.Spinner = spinner.Spinner{
+		Frames: frames,
+		FPS:    300 * time.Millisecond,
+	}
+	return s
+}
+
 // SplashModel is the splash screen shown on app launch while connecting
 // to the server.
 type SplashModel struct {
@@ -28,13 +62,9 @@ type SplashModel struct {
 
 // NewSplashModel creates a new splash screen model.
 func NewSplashModel(serverURL string) SplashModel {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(theme.Accent)
-
 	return SplashModel{
 		serverURL: serverURL,
-		spinner:   s,
+		spinner:   newBlockSpinner(),
 	}
 }
 
@@ -106,12 +136,12 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 func (m SplashModel) View() string {
 	var b strings.Builder
 
-	// Logo
-	b.WriteString(theme.Logo())
+	// Logo (splash variant with letter-spacing)
+	b.WriteString(theme.LogoSplash())
 	b.WriteString("\n")
 
-	// Tagline
-	b.WriteString(theme.Tagline())
+	// Tagline (splash variant with letter-spacing)
+	b.WriteString(theme.TaglineSplash())
 	b.WriteString("\n\n")
 
 	if m.failed {
@@ -121,9 +151,9 @@ func (m SplashModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(theme.Hint.Render("press r to retry · q to quit"))
 	} else if !m.done {
-		// Connecting state
+		// Connecting state — spinner centered below tagline
 		b.WriteString(m.spinner.View())
-		b.WriteString(" ")
+		b.WriteString("\n")
 		b.WriteString(theme.Caption.Render("connecting..."))
 	}
 	// If done, just show logo + tagline (about to transition)
@@ -134,12 +164,21 @@ func (m SplashModel) View() string {
 }
 
 // checkHealth returns a tea.Cmd that makes an HTTP GET request to the
-// server's health endpoint.
+// server's health endpoint. A minimum display time ensures the splash
+// screen is visible even when the server responds instantly.
 func (m SplashModel) checkHealth() tea.Cmd {
 	url := m.serverURL
 	return func() tea.Msg {
+		start := time.Now()
+
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(url + "/health")
+
+		// Ensure the splash is visible for at least MinSplashDuration.
+		if elapsed := time.Since(start); elapsed < MinSplashDuration {
+			time.Sleep(MinSplashDuration - elapsed)
+		}
+
 		if err != nil {
 			return app.MsgServerFailed{Err: err.Error()}
 		}

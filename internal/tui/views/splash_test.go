@@ -1,7 +1,9 @@
 package views_test
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -69,5 +71,36 @@ func TestSplashScreenResize(t *testing.T) {
 	}
 	if sm.Failed() {
 		t.Error("resize should not set failed")
+	}
+}
+
+func TestSplashMinDuration(t *testing.T) {
+	if views.MinSplashDuration != 2500*time.Millisecond {
+		t.Errorf("MinSplashDuration = %v, want 2500ms", views.MinSplashDuration)
+	}
+}
+
+func TestBlockSpinnerFrames(t *testing.T) {
+	frames := views.BlockSpinnerFrames()
+	if len(frames) != 4 {
+		t.Fatalf("expected 4 spinner frames, got %d", len(frames))
+	}
+	if !strings.Contains(frames[0], "░") {
+		t.Error("frame 0 should contain light shade blocks")
+	}
+	if !strings.Contains(frames[3], "█") {
+		t.Error("frame 3 should contain full blocks")
+	}
+}
+
+func TestSplashViewContainsConnecting(t *testing.T) {
+	m := views.NewSplashModel("http://localhost:8080")
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	view := m.View()
+	if view == "" {
+		t.Error("splash view should not be empty")
+	}
+	if !strings.Contains(view, "connecting") {
+		t.Error("splash view should contain 'connecting...'")
 	}
 }
