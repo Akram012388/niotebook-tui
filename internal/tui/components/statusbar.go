@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 type statusKind int
@@ -17,18 +19,14 @@ const (
 )
 
 var (
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("1"))
-
-	successStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("2"))
-
-	loadingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("3"))
-
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Faint(true)
+	sbErrorStyle = lipgloss.NewStyle().
+			Foreground(theme.Error)
+	sbSuccessStyle = lipgloss.NewStyle().
+			Foreground(theme.Success)
+	sbLoadingStyle = lipgloss.NewStyle().
+			Foreground(theme.Warning)
+	sbHelpStyle = lipgloss.NewStyle().
+			Foreground(theme.TextMuted)
 )
 
 // MsgStatusClear is sent when the status bar auto-clear timer fires.
@@ -75,22 +73,22 @@ func (m *StatusBarModel) Clear() {
 // is active. The status message appears on the right side.
 func (m StatusBarModel) View(helpText string, width int) string {
 	if m.kind == statusNone || m.message == "" {
-		return helpStyle.Width(width).Render(helpText)
+		return sbHelpStyle.Width(width).Render(helpText)
 	}
 
 	var styled string
 	switch m.kind {
 	case statusError:
-		styled = errorStyle.Render(m.message)
+		styled = sbErrorStyle.Render(m.message)
 	case statusSuccess:
-		styled = successStyle.Render(m.message)
+		styled = sbSuccessStyle.Render(m.message)
 	case statusLoading:
-		styled = loadingStyle.Render(m.message)
+		styled = sbLoadingStyle.Render(m.message)
 	default:
 		styled = m.message
 	}
 
-	left := helpStyle.Render(helpText)
+	left := sbHelpStyle.Render(helpText)
 	leftWidth := lipgloss.Width(left)
 	rightWidth := lipgloss.Width(styled)
 	gap := width - leftWidth - rightWidth

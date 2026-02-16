@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 // View constants for help binding context.
@@ -48,20 +50,17 @@ var helpBindings = map[string][]HelpEntry{
 var (
 	helpBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("5")).
+			BorderForeground(theme.Accent).
 			Padding(1, 2)
-
 	helpTitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("5"))
-
+			Foreground(theme.Accent)
 	helpKeyStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("6")).
+			Foreground(theme.Accent).
 			Bold(true).
 			Width(12)
-
 	helpDescStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7"))
+			Foreground(theme.Text)
 )
 
 // HelpModel manages the help overlay state.

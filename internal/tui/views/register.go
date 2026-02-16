@@ -10,6 +10,7 @@ import (
 
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 const (
@@ -215,11 +216,11 @@ func (m RegisterModel) View() string {
 
 	// Username field
 	usernameLen := len(m.usernameInput.Value())
-	counterColor := "8"
+	counterFg := theme.TextMuted
 	if usernameLen > 0 && usernameLen < usernameMinLen {
-		counterColor = "1"
+		counterFg = theme.Error
 	}
-	counterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(counterColor)).Faint(true)
+	counterStyle := lipgloss.NewStyle().Foreground(counterFg)
 
 	b.WriteString(labelStyle.Render("Username") + " " + counterStyle.Render(fmt.Sprintf("%d/%d", usernameLen, usernameMaxLen)))
 	b.WriteString("\n")
@@ -244,11 +245,11 @@ func (m RegisterModel) View() string {
 
 	// Password field
 	pwLen := len(m.passwordInput.Value())
-	pwCounterColor := "8"
+	pwCounterFg := theme.TextMuted
 	if pwLen > 0 && pwLen < passwordMinLen {
-		pwCounterColor = "1"
+		pwCounterFg = theme.Error
 	}
-	pwCounterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(pwCounterColor)).Faint(true)
+	pwCounterStyle := lipgloss.NewStyle().Foreground(pwCounterFg)
 
 	b.WriteString(labelStyle.Render("Password") + " " + pwCounterStyle.Render(fmt.Sprintf("%d chars", pwLen)))
 	b.WriteString("\n")

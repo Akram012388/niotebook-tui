@@ -10,6 +10,7 @@ import (
 
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 const maxPostLength = 140
@@ -17,27 +18,22 @@ const maxPostLength = 140
 var (
 	composeBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("5")).
+			BorderForeground(theme.Accent).
 			Padding(1, 2)
-
 	composeTitleStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("5"))
-
+				Foreground(theme.Accent)
 	composePromptStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("7")).
+				Foreground(theme.Text).
 				MarginBottom(1)
-
 	counterNormalStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("8"))
-
+				Foreground(theme.TextSecondary)
 	counterWarningStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("1")).
+				Foreground(theme.Error).
 				Bold(true)
-
 	composeHintStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("8")).
-				Faint(true)
+				Foreground(theme.TextMuted).
+				Italic(true)
 )
 
 // ComposeModel manages the compose modal state.

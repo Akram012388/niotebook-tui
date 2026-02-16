@@ -2,25 +2,21 @@ package components
 
 import (
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 var (
-	appNameStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("5"))
-
 	headerUsernameStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("6"))
-
+				Foreground(theme.Accent)
 	viewNameStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Faint(true)
+			Foreground(theme.TextMuted)
 )
 
 // RenderHeader renders the app header bar with left-aligned app name + username
 // and right-aligned view name, spanning the given width.
 func RenderHeader(appName, username, viewName string, width int) string {
-	left := appNameStyle.Render(appName) + "  " + headerUsernameStyle.Render("@"+username)
+	left := theme.LogoCompact() + "  " + headerUsernameStyle.Render("@"+username)
 	right := viewNameStyle.Render(viewName)
 
 	leftWidth := lipgloss.Width(left)

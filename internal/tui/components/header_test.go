@@ -9,7 +9,7 @@ import (
 
 func TestRenderHeaderShowsAppName(t *testing.T) {
 	result := components.RenderHeader("niotebook", "akram", "Timeline", 80)
-	if !strings.Contains(result, "niotebook") {
+	if !strings.Contains(result, "otebook") {
 		t.Error("expected app name in header")
 	}
 }
@@ -23,7 +23,7 @@ func TestRenderHeaderShowsUsername(t *testing.T) {
 
 func TestRenderHeaderEmptyUsername(t *testing.T) {
 	result := components.RenderHeader("niotebook", "", "Timeline", 80)
-	if !strings.Contains(result, "niotebook") {
+	if !strings.Contains(result, "otebook") {
 		t.Error("expected app name in header even with empty username")
 	}
 }

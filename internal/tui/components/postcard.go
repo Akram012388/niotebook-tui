@@ -8,27 +8,20 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 var (
 	usernameStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("6")).
-			Bold(true)
-
+			Foreground(theme.TextSecondary).Bold(true)
 	selectedUsernameStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("5")).
-				Bold(true)
-
+				Foreground(theme.Accent).Bold(true)
 	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Faint(true)
-
+			Foreground(theme.TextMuted)
 	separatorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8"))
-
+			Foreground(theme.Border)
 	markerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("5")).
-			Bold(true)
+			Foreground(theme.Accent).Bold(true)
 )
 
 // RenderPostCard renders a single post card. If selected is true, the post

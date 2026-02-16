@@ -9,32 +9,28 @@ import (
 
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 var (
 	formBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("8")).
+			BorderForeground(theme.AccentDim).
 			Padding(1, 2)
-
 	formTitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("5")).
+			Foreground(theme.Accent).
 			MarginBottom(1)
-
 	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7"))
-
+			Foreground(theme.Text)
 	buttonStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("5"))
-
+			Foreground(theme.Accent)
 	errMsgStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("1"))
-
+			Foreground(theme.Error)
 	hintStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Faint(true)
+			Foreground(theme.TextMuted).
+			Italic(true)
 )
 
 // LoginModel manages the login form state.

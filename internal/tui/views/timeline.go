@@ -11,15 +11,14 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 	"github.com/Akram012388/niotebook-tui/internal/tui/components"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 var (
 	emptyStateStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Faint(true)
-
-	loadingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("3"))
+			Foreground(theme.TextMuted).Italic(true)
+	tlLoadingStyle = lipgloss.NewStyle().
+			Foreground(theme.Warning)
 )
 
 // TimelineModel manages the timeline view state.
@@ -206,7 +205,7 @@ func (m TimelineModel) visiblePostCount() int {
 func (m TimelineModel) View() string {
 	if m.loading {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
-			loadingStyle.Render("Loading timeline..."))
+			tlLoadingStyle.Render("Loading timeline..."))
 	}
 
 	if len(m.posts) == 0 {

@@ -11,29 +11,22 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 	"github.com/Akram012388/niotebook-tui/internal/tui/components"
+	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
 
 var (
 	profileUsernameStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("6")).
-				Bold(true)
-
+				Foreground(theme.Accent).Bold(true)
 	profileDisplayNameStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("7"))
-
+				Foreground(theme.Text)
 	profileBioStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7"))
-
+			Foreground(theme.Text)
 	profileJoinedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("8")).
-				Faint(true)
-
+				Foreground(theme.TextSecondary)
 	profileSectionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("5")).
-				Bold(true)
-
+				Foreground(theme.Accent).Bold(true)
 	profileSeparatorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("8"))
+				Foreground(theme.Border)
 )
 
 // ProfileModel manages the profile view state.
@@ -218,7 +211,7 @@ func (m ProfileModel) visiblePostCount() int {
 func (m ProfileModel) View() string {
 	if m.loading {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
-			loadingStyle.Render("Loading profile..."))
+			tlLoadingStyle.Render("Loading profile..."))
 	}
 
 	if m.user == nil {
