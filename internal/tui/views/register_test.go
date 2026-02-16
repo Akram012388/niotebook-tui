@@ -71,3 +71,137 @@ func TestRegisterModelAuthError(t *testing.T) {
 		t.Error("expected error message in output")
 	}
 }
+
+func TestRegisterSubmitEmptyUsername(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Error("expected nil cmd when username is empty")
+	}
+	view := m.View()
+	if !strings.Contains(view, "username is required") {
+		t.Error("expected username validation error")
+	}
+}
+
+func TestRegisterSubmitShortUsername(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	for _, r := range "ab" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Error("expected nil cmd for short username")
+	}
+	view := m.View()
+	if !strings.Contains(view, "at least 3 characters") {
+		t.Error("expected short username error")
+	}
+}
+
+func TestRegisterSubmitInvalidEmail(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	for _, r := range "akram" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	for _, r := range "notanemail" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Error("expected nil cmd for invalid email")
+	}
+	view := m.View()
+	if !strings.Contains(view, "invalid email") {
+		t.Error("expected invalid email error")
+	}
+}
+
+func TestRegisterSubmitShortPassword(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	for _, r := range "akram" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	for _, r := range "test@example.com" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	for _, r := range "short" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Error("expected nil cmd for short password")
+	}
+	view := m.View()
+	if !strings.Contains(view, "at least 8 characters") {
+		t.Error("expected short password error")
+	}
+}
+
+func TestRegisterSubmitWithNilClient(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	for _, r := range "akram" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	for _, r := range "test@example.com" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	for _, r := range "password123" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("expected cmd from submit")
+	}
+	msg := cmd()
+	if _, ok := msg.(app.MsgAuthError); !ok {
+		t.Errorf("expected MsgAuthError with nil client, got %T", msg)
+	}
+}
+
+func TestRegisterTabPastPasswordSwitchesToLogin(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if cmd == nil {
+		t.Fatal("expected cmd for switching to login")
+	}
+	msg := cmd()
+	if _, ok := msg.(app.MsgSwitchToLogin); !ok {
+		t.Errorf("expected MsgSwitchToLogin, got %T", msg)
+	}
+}
+
+func TestRegisterInit(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	cmd := m.Init()
+	if cmd == nil {
+		t.Error("Init should return a blink command")
+	}
+}
+
+func TestRegisterKeypressClearsError(t *testing.T) {
+	m := views.NewRegisterModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m, _ = m.Update(app.MsgAuthError{Message: "email taken", Field: "email"})
+	view := m.View()
+	if !strings.Contains(view, "email taken") {
+		t.Fatal("error should be visible")
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	view = m.View()
+	if strings.Contains(view, "email taken") {
+		t.Error("error should be cleared after keypress")
+	}
+}

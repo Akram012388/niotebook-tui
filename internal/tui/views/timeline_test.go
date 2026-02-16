@@ -189,3 +189,49 @@ func TestTimelineRefreshed(t *testing.T) {
 		t.Error("view should contain refreshed post")
 	}
 }
+
+func TestTimelineInitReturnsCmd(t *testing.T) {
+	m := views.NewTimelineModel(nil)
+	cmd := m.Init()
+	if cmd == nil {
+		t.Error("Init should return a fetch command")
+	}
+	msg := cmd()
+	if _, ok := msg.(app.MsgAPIError); !ok {
+		t.Errorf("expected MsgAPIError with nil client, got %T", msg)
+	}
+}
+
+func TestTimelineFetchLatestReturnsCmd(t *testing.T) {
+	m := views.NewTimelineModel(nil)
+	cmd := m.FetchLatest()
+	if cmd == nil {
+		t.Error("FetchLatest should return a command")
+	}
+	msg := cmd()
+	if _, ok := msg.(app.MsgAPIError); !ok {
+		t.Errorf("expected MsgAPIError with nil client, got %T", msg)
+	}
+}
+
+func TestTimelineSpaceAndBPagination(t *testing.T) {
+	posts := make([]models.Post, 20)
+	for i := range posts {
+		posts[i] = models.Post{
+			ID:      fmt.Sprintf("%d", i),
+			Author:  &models.User{Username: "user"},
+			Content: fmt.Sprintf("Post %d", i),
+		}
+	}
+	m := views.NewTimelineModel(nil)
+	m.SetPosts(posts)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	if m.CursorIndex() == 0 {
+		t.Error("expected cursor to move after space")
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	if m.CursorIndex() != 0 {
+		t.Errorf("cursor = %d after b, want 0", m.CursorIndex())
+	}
+}

@@ -137,3 +137,11 @@ func TestComposeModelAPIError(t *testing.T) {
 	_, cmd := m.Update(app.MsgAPIError{Message: "post too long"})
 	_ = cmd
 }
+
+func TestComposeInitReturnsBlink(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	cmd := m.Init()
+	if cmd == nil {
+		t.Error("Init should return blink command")
+	}
+}
