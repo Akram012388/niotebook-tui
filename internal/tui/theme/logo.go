@@ -1,25 +1,62 @@
 package theme
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
 
-// Logo returns the full Niotebook brand logo: "niotebook" where the letter 'i'
-// is rendered in the terracotta Accent color and all other characters use the
-// primary Text color.
+	"github.com/charmbracelet/lipgloss"
+)
+
+// Logo returns the Niotebook brand wordmark: "niotebook" in bold,
+// with the letter 'i' in the terracotta Accent color.
 func Logo() string {
-	text := lipgloss.NewStyle().Foreground(Text)
-	accent := lipgloss.NewStyle().Foreground(Accent)
-
+	text := lipgloss.NewStyle().Bold(true).Foreground(Text)
+	accent := lipgloss.NewStyle().Bold(true).Foreground(Accent)
 	return text.Render("n") + accent.Render("i") + text.Render("otebook")
 }
 
-// LogoCompact returns a compact variant of the brand logo suitable for sidebars
-// and tight spaces. Currently identical to Logo.
+// LogoCompact returns a compact variant of the brand logo.
 func LogoCompact() string {
 	return Logo()
 }
 
-// Tagline returns the brand tagline "the social terminal" styled in the Hint
-// typography (italic, muted text).
+// LogoSplash returns the splash screen variant with letter-spacing:
+// "n i o t e b o o k" — bold, 'i' in Accent.
+func LogoSplash() string {
+	text := lipgloss.NewStyle().Bold(true).Foreground(Text)
+	accent := lipgloss.NewStyle().Bold(true).Foreground(Accent)
+
+	letters := []struct {
+		char  string
+		style lipgloss.Style
+	}{
+		{"n", text}, {"i", accent}, {"o", text}, {"t", text},
+		{"e", text}, {"b", text}, {"o", text}, {"o", text}, {"k", text},
+	}
+
+	parts := make([]string, len(letters))
+	for i, l := range letters {
+		parts[i] = l.style.Render(l.char)
+	}
+	return strings.Join(parts, " ")
+}
+
+// Tagline returns the brand tagline in Hint style.
 func Tagline() string {
 	return Hint.Render("the social terminal")
+}
+
+// TaglineSplash returns the splash screen variant of the tagline with
+// letter-spacing. Styled in TextMuted.
+func TaglineSplash() string {
+	style := lipgloss.NewStyle().Foreground(TextMuted)
+	chars := []rune("the social terminal")
+	parts := make([]string, len(chars))
+	for i, ch := range chars {
+		if ch == ' ' {
+			parts[i] = " "
+		} else {
+			parts[i] = style.Render(string(ch))
+		}
+	}
+	return strings.Join(parts, " ")
 }

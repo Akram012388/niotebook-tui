@@ -39,3 +39,21 @@ func TestTaglineContainsSocialTerminal(t *testing.T) {
 		t.Errorf("Tagline() should contain 'the social terminal', got %q", result)
 	}
 }
+
+func TestLogoSplashReturnsSpacedLetters(t *testing.T) {
+	result := LogoSplash()
+	if result == "" {
+		t.Fatal("LogoSplash() returned empty string")
+	}
+	// Should contain individual characters (with ANSI codes between them)
+	if !strings.Contains(result, "o") {
+		t.Error("LogoSplash() should contain letter 'o'")
+	}
+}
+
+func TestTaglineSplashReturnsSpacedText(t *testing.T) {
+	result := TaglineSplash()
+	if result == "" {
+		t.Fatal("TaglineSplash() returned empty string")
+	}
+}
