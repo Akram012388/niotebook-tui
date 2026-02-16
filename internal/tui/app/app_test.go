@@ -142,6 +142,7 @@ func TestAppModelNOpensCompose(t *testing.T) {
 func TestAppModelQuestionMarkOpensHelp(t *testing.T) {
 	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	// Help should now be open — view name should reflect it
 	if m.View() == "" {
@@ -250,6 +251,7 @@ func TestAppModelPostPublished(t *testing.T) {
 func TestAppModelStatusClear(t *testing.T) {
 	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, app.MsgStatusClear{})
 	// Should not panic
 	view := m.View()
@@ -278,6 +280,7 @@ func TestAppModelHelpDismissClosesOverlay(t *testing.T) {
 	dismissFactory := &stubDismissFactory{}
 	m := app.NewAppModelWithFactory(nil, nil, dismissFactory, "")
 	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	// Open help
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	// Dismiss with Esc — stub help returns dismissed=true on any key
@@ -330,6 +333,7 @@ func TestAppModelProfileUpdated(t *testing.T) {
 func TestAppModelTimelineLoadedRouting(t *testing.T) {
 	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, app.MsgTimelineLoaded{
 		Posts:   []models.Post{{ID: "1"}},
 		HasMore: false,
@@ -415,6 +419,7 @@ func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
 func TestAppModelHelpOnProfile(t *testing.T) {
 	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	if m.CurrentView() != app.ViewProfile {

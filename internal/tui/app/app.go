@@ -2,7 +2,6 @@ package app
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
@@ -112,9 +111,6 @@ type AppModel struct {
 	// Overlays
 	compose ComposeViewModel
 	help    HelpViewModel
-
-	// Components
-	statusBar components.StatusBarModel
 }
 
 // NewAppModel creates the root app model. If storedAuth has a token, the model
@@ -123,7 +119,6 @@ func NewAppModel(c *client.Client, storedAuth *config.StoredAuth) AppModel {
 	m := AppModel{
 		client:      c,
 		currentView: ViewLogin,
-		statusBar:   components.NewStatusBarModel(),
 	}
 	return m
 }
@@ -138,7 +133,6 @@ func NewAppModelWithFactory(c *client.Client, storedAuth *config.StoredAuth, f V
 		factory:     f,
 		storedAuth:  storedAuth,
 		splash:      f.NewSplash(serverURL),
-		statusBar:   components.NewStatusBarModel(),
 	}
 	return m
 }
@@ -250,8 +244,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.factory != nil {
 			m.login = m.factory.NewLogin(m.client)
 		}
-		cmd := m.statusBar.SetError("Session expired. Please log in again.")
-		return m, cmd
+		return m, nil
 
 	case MsgTimelineLoaded, MsgTimelineRefreshed:
 		if m.timeline != nil {
@@ -267,12 +260,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case MsgPostPublished:
 		m.compose = nil
-		cmd := m.statusBar.SetSuccess("Post published!")
-		var fetchCmd tea.Cmd
 		if m.timeline != nil {
-			fetchCmd = m.timeline.FetchLatest()
+			return m, m.timeline.FetchLatest()
 		}
-		return m, tea.Batch(cmd, fetchCmd)
+		return m, nil
 
 	case MsgProfileLoaded:
 		if m.profile != nil {
@@ -302,11 +293,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case MsgAPIError:
-		cmd := m.statusBar.SetError(msg.Message)
-		return m, cmd
-
-	case components.MsgStatusClear:
-		m.statusBar.Clear()
 		return m, nil
 
 	case MsgSwitchToRegister:
@@ -329,6 +315,24 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.login = m.factory.NewLogin(m.client)
 			m.register = m.factory.NewRegister(m.client)
 			m.timeline = m.factory.NewTimeline(m.client)
+		}
+		// Give newly created views their correct dimensions.
+		if m.width > 0 {
+			cols := layout.ComputeColumns(m.width)
+			centerMsg := tea.WindowSizeMsg{Width: cols.Center, Height: m.height}
+			fullMsg := tea.WindowSizeMsg{Width: m.width, Height: m.height}
+			if m.login != nil {
+				m.login, _ = m.login.Update(fullMsg)
+			}
+			if m.register != nil {
+				m.register, _ = m.register.Update(fullMsg)
+			}
+			if m.timeline != nil {
+				updated, _ := m.timeline.Update(centerMsg)
+				if tl, ok := updated.(TimelineViewModel); ok {
+					m.timeline = tl
+				}
+			}
 		}
 		// If stored auth has tokens, skip login and go to timeline.
 		if m.storedAuth != nil && m.storedAuth.AccessToken != "" {
@@ -397,8 +401,7 @@ func (m AppModel) View() string {
 	// Authenticated views: three-column layout
 	cols := layout.ComputeColumns(m.width)
 
-	// Content area height (full height minus status bar)
-	contentHeight := m.height - 1
+	contentHeight := m.height
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
@@ -411,13 +414,7 @@ func (m AppModel) View() string {
 		content = m.compose.View()
 	}
 
-	// Status bar at bottom of center column
-	helpText := m.currentHelpText()
-	statusBar := m.statusBar.View(helpText, cols.Center)
-	centerContent := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Height(contentHeight-1).Render(content),
-		statusBar,
-	)
+	centerContent := content
 
 	// Left sidebar
 	leftContent := components.RenderSidebar(
@@ -586,10 +583,17 @@ func (m AppModel) updateCurrentView(msg tea.Msg) (AppModel, tea.Cmd) {
 	return m, cmd
 }
 
-// propagateWindowSize sends the window size to all sub-models.
+// propagateWindowSize sends the window size to all sub-models. Views that
+// render inside the center column receive the center column width so they can
+// word-wrap and center content correctly.
 func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	// Center column dimensions for views rendered inside the three-column layout.
+	cols := layout.ComputeColumns(msg.Width)
+	centerMsg := tea.WindowSizeMsg{Width: cols.Center, Height: msg.Height}
+
+	// Splash: full-screen, no columns.
 	if m.splash != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
@@ -599,6 +603,8 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 		}
 		cmds = append(cmds, cmd)
 	}
+
+	// Auth views: full-screen, no columns.
 	if m.login != nil {
 		var cmd tea.Cmd
 		m.login, cmd = m.login.Update(msg)
@@ -609,10 +615,12 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 		m.register, cmd = m.register.Update(msg)
 		cmds = append(cmds, cmd)
 	}
+
+	// Timeline and profile: center column width.
 	if m.timeline != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
-		updated, cmd = m.timeline.Update(msg)
+		updated, cmd = m.timeline.Update(centerMsg)
 		if tl, ok := updated.(TimelineViewModel); ok {
 			m.timeline = tl
 		}
@@ -621,16 +629,18 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 	if m.profile != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
-		updated, cmd = m.profile.Update(msg)
+		updated, cmd = m.profile.Update(centerMsg)
 		if pv, ok := updated.(ProfileViewModel); ok {
 			m.profile = pv
 		}
 		cmds = append(cmds, cmd)
 	}
+
+	// Overlays: center column width.
 	if m.compose != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
-		updated, cmd = m.compose.Update(msg)
+		updated, cmd = m.compose.Update(centerMsg)
 		if cv, ok := updated.(ComposeViewModel); ok {
 			m.compose = cv
 		}
@@ -639,7 +649,7 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 	if m.help != nil {
 		var updated ViewModel
 		var cmd tea.Cmd
-		updated, cmd = m.help.Update(msg)
+		updated, cmd = m.help.Update(centerMsg)
 		if hv, ok := updated.(HelpViewModel); ok {
 			m.help = hv
 		}
@@ -671,36 +681,6 @@ func (m AppModel) viewCurrentContent() string {
 	case ViewProfile:
 		if m.profile != nil {
 			return m.profile.View()
-		}
-	}
-	return ""
-}
-
-
-// currentHelpText returns the status bar help text for the active view/overlay.
-func (m AppModel) currentHelpText() string {
-	if m.help != nil {
-		return m.help.HelpText()
-	}
-	if m.compose != nil {
-		return m.compose.HelpText()
-	}
-	switch m.currentView {
-	case ViewLogin:
-		if m.login != nil {
-			return m.login.HelpText()
-		}
-	case ViewRegister:
-		if m.register != nil {
-			return m.register.HelpText()
-		}
-	case ViewTimeline:
-		if m.timeline != nil {
-			return m.timeline.HelpText()
-		}
-	case ViewProfile:
-		if m.profile != nil {
-			return m.profile.HelpText()
 		}
 	}
 	return ""
