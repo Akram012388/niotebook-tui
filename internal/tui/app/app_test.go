@@ -407,6 +407,121 @@ func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
 	}
 }
 
+func TestAppModelHelpOnProfile(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	if m.CurrentView() != app.ViewProfile {
+		t.Fatalf("view = %v, want ViewProfile", m.CurrentView())
+	}
+	// Open help from profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view with help on profile")
+	}
+}
+
+func TestAppModelWindowResizeWithOverlays(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	// Open compose
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	// Resize with compose+profile open
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after resize with overlays")
+	}
+}
+
+func TestAppModelWindowResizeWithHelp(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view after resize with help")
+	}
+}
+
+func TestAppModelNFromProfile(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	// Open compose from profile
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if !m.IsComposeOpen() {
+		t.Error("expected compose to open from profile view")
+	}
+}
+
+func TestAppModelRegisterKeyRouting(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgSwitchToRegister{})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	// Key routing to register view — should not panic
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	_ = m.View()
+	if m.CurrentView() != app.ViewRegister {
+		t.Errorf("view = %v, want ViewRegister", m.CurrentView())
+	}
+}
+
+func TestAppModelProfileViewContent(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{ID: "u1", Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty profile view content")
+	}
+}
+
+func TestAppModelComposeViewName(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty view with compose")
+	}
+}
+
+func TestAppModelInitWithoutFactory(t *testing.T) {
+	m := app.NewAppModel(nil, nil)
+	cmd := m.Init()
+	// Without factory, login is nil, should return nil
+	if cmd != nil {
+		t.Error("expected nil cmd from Init without factory")
+	}
+}
+
 // --- Additional stub factories for specific behaviors ---
 
 // stubCancelFactory returns a compose that cancels immediately on any key
