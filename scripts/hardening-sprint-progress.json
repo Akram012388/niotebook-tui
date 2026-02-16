@@ -1,0 +1,91 @@
+{
+  "sprint_id": "2026-02-16",
+  "branch": "hardening-sprint",
+  "started_at": "2026-02-16T05:59:35Z",
+  "tasks": {
+    "1": {
+      "status": "running",
+      "attempts": 1,
+      "started": "2026-02-16T05:59:35Z",
+      "finished": null,
+      "error": null
+    },
+    "2": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "3": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "4": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "5": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "6": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "7": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "8": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "9": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "10": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "11": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "12": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    }
+  }
+}
