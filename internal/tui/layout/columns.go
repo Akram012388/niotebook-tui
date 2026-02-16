@@ -24,16 +24,15 @@ const (
 	ThreeColumn
 )
 
-// Layout breakpoint and fixed-width constants.
+// Layout breakpoint and proportion constants.
 const (
 	// ThreeColumnMin is the minimum terminal width for three-column layout.
 	ThreeColumnMin = 100
 	// TwoColumnMin is the minimum terminal width for two-column layout.
 	TwoColumnMin = 80
-	// LeftWidth is the fixed width of the left sidebar.
-	LeftWidth = 20
-	// RightWidth is the fixed width of the right sidebar.
-	RightWidth = 18
+	// SidebarPercent is the percentage of terminal width each sidebar occupies
+	// in three-column mode (20/60/20 split).
+	SidebarPercent = 20
 )
 
 // Columns holds the computed widths for each column and the active layout
@@ -58,27 +57,28 @@ func ModeForWidth(width int) LayoutMode {
 	}
 }
 
-// ComputeColumns returns the column widths for the given terminal width. The
-// left and right sidebars have fixed widths; the center column receives all
-// remaining space. Divider characters (one per adjacent column boundary) are
-// subtracted from the center width.
+// ComputeColumns returns the column widths for the given terminal width using
+// a 20/60/20 percentage split. Both sidebars are equal width. Divider
+// characters (one per adjacent column boundary) are subtracted from the center.
 func ComputeColumns(width int) Columns {
 	mode := ModeForWidth(width)
 	switch mode {
 	case ThreeColumn:
+		sidebar := width * SidebarPercent / 100
 		// Two dividers: left|center|right
-		center := width - LeftWidth - RightWidth - 2
+		center := width - 2*sidebar - 2
 		if center < 1 {
 			center = 1
 		}
-		return Columns{Left: LeftWidth, Center: center, Right: RightWidth, Mode: ThreeColumn}
+		return Columns{Left: sidebar, Center: center, Right: sidebar, Mode: ThreeColumn}
 	case TwoColumn:
+		sidebar := width * SidebarPercent / 100
 		// One divider: left|center
-		center := width - LeftWidth - 1
+		center := width - sidebar - 1
 		if center < 1 {
 			center = 1
 		}
-		return Columns{Left: LeftWidth, Center: center, Right: 0, Mode: TwoColumn}
+		return Columns{Left: sidebar, Center: center, Right: 0, Mode: TwoColumn}
 	default:
 		return Columns{Left: 0, Center: width, Right: 0, Mode: SingleColumn}
 	}
@@ -130,4 +130,43 @@ func RenderColumns(width, height int, leftContent, centerContent, rightContent s
 	default:
 		return colStyle(cols.Center).Render(centerContent)
 	}
+}
+
+// FocusColumn identifies which column currently has keyboard focus.
+type FocusColumn int
+
+const (
+	FocusLeft   FocusColumn = 0
+	FocusCenter FocusColumn = 1
+	FocusRight  FocusColumn = 2
+)
+
+// FocusState tracks which column is currently focused.
+type FocusState struct {
+	active FocusColumn
+}
+
+// NewFocusState returns a FocusState with Center as the default.
+func NewFocusState() FocusState {
+	return FocusState{active: FocusCenter}
+}
+
+// Active returns the currently focused column.
+func (f *FocusState) Active() FocusColumn {
+	return f.active
+}
+
+// Next moves focus to the next column (Left→Center→Right→Left).
+func (f *FocusState) Next() {
+	f.active = (f.active + 1) % 3
+}
+
+// Prev moves focus to the previous column (Right→Center→Left→Right).
+func (f *FocusState) Prev() {
+	f.active = (f.active + 2) % 3
+}
+
+// Reset returns focus to the center column.
+func (f *FocusState) Reset() {
+	f.active = FocusCenter
 }
