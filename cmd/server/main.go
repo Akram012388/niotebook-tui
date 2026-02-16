@@ -13,7 +13,6 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/build"
 	"github.com/Akram012388/niotebook-tui/internal/server"
 	"github.com/Akram012388/niotebook-tui/internal/server/store"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -75,7 +74,8 @@ func main() {
 
 	// Background: token cleanup
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
-	go runTokenCleanup(cleanupCtx, pool)
+	tokenStore := store.NewRefreshTokenStore(pool)
+	go runTokenCleanup(cleanupCtx, tokenStore)
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
@@ -96,7 +96,7 @@ func main() {
 	slog.Info("server stopped")
 }
 
-func runTokenCleanup(ctx context.Context, pool *pgxpool.Pool) {
+func runTokenCleanup(ctx context.Context, tokens store.RefreshTokenStore) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
@@ -105,11 +105,11 @@ func runTokenCleanup(ctx context.Context, pool *pgxpool.Pool) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_, err := pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < NOW()")
+			deleted, err := tokens.DeleteExpired(ctx)
 			if err != nil {
 				slog.Error("token cleanup failed", "err", err)
 			} else {
-				slog.Debug("running token cleanup")
+				slog.Debug("token cleanup complete", "deleted", deleted)
 			}
 		}
 	}
