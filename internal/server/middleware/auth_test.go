@@ -102,6 +102,61 @@ func TestAuthMiddlewareExemptPaths(t *testing.T) {
 	}
 }
 
+func TestUsernameFromContext(t *testing.T) {
+	handler := middleware.Auth(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username := middleware.UsernameFromContext(r.Context())
+		if username != "akram" {
+			t.Errorf("username = %q, want %q", username, "akram")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	token := makeToken(testSecret, jwt.MapClaims{
+		"sub":      "user-123",
+		"username": "akram",
+		"exp":      time.Now().Add(time.Hour).Unix(),
+		"iat":      time.Now().Unix(),
+	})
+
+	req := httptest.NewRequest("GET", "/api/v1/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestUsernameFromContextEmpty(t *testing.T) {
+	username := middleware.UsernameFromContext(t.Context())
+	if username != "" {
+		t.Errorf("expected empty username from empty context, got %q", username)
+	}
+}
+
+func TestAuthMiddlewareMissingUsername(t *testing.T) {
+	// Token with sub but missing username claim
+	token := makeToken(testSecret, jwt.MapClaims{
+		"sub": "user-123",
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+	})
+
+	handler := middleware.Auth(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called for missing username")
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
 func TestAuthMiddlewareMalformedClaims(t *testing.T) {
 	// Token with integer sub instead of string — valid signature, bad claims
 	token := makeToken(testSecret, jwt.MapClaims{

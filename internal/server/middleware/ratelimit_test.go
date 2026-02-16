@@ -73,6 +73,59 @@ func TestRateLimiter_HealthExempt(t *testing.T) {
 	}
 }
 
+func TestRateLimiter_WriteEndpoint(t *testing.T) {
+	rl := NewRateLimiter()
+	defer rl.Stop()
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+
+	// Write endpoint: POST /api/v1/posts — burst 10
+	var passed, limited int
+	for i := 0; i < 15; i++ {
+		req := httptest.NewRequest("POST", "/api/v1/posts", nil)
+		req.RemoteAddr = "10.0.0.1:5000"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		switch rec.Code {
+		case http.StatusCreated:
+			passed++
+		case http.StatusTooManyRequests:
+			limited++
+		default:
+			t.Errorf("unexpected status: %d", rec.Code)
+		}
+	}
+
+	if passed == 0 {
+		t.Error("expected at least some write requests to pass")
+	}
+	if limited == 0 {
+		t.Error("expected at least some write requests to be rate limited")
+	}
+}
+
+func TestRateLimiter_ReadEndpoint(t *testing.T) {
+	rl := NewRateLimiter()
+	defer rl.Stop()
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Read endpoint: GET /api/v1/timeline — burst 30
+	req := httptest.NewRequest("GET", "/api/v1/timeline", nil)
+	req.RemoteAddr = "10.0.0.1:5000"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
 func TestRateLimiter_DifferentIPsIndependent(t *testing.T) {
 	rl := NewRateLimiter()
 	defer rl.Stop()
