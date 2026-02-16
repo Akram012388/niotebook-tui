@@ -46,16 +46,16 @@
       "error": null
     },
     "7": {
-      "status": "running",
+      "status": "completed",
       "attempts": 1,
       "started": "2026-02-16T10:49:10Z",
-      "finished": null,
+      "finished": "2026-02-16T10:52:00Z",
       "error": null
     },
     "8": {
-      "status": "pending",
-      "attempts": 0,
-      "started": null,
+      "status": "running",
+      "attempts": 1,
+      "started": "2026-02-16T10:52:00Z",
       "finished": null,
       "error": null
     },
