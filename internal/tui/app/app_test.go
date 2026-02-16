@@ -35,7 +35,9 @@ type stubCompose struct {
 
 func (s *stubCompose) Submitted() bool          { return false }
 func (s *stubCompose) Cancelled() bool          { return s.cancelled }
+func (s *stubCompose) Expanded() bool           { return false }
 func (s *stubCompose) IsTextInputFocused() bool { return true }
+func (s *stubCompose) Expand()                  {}
 
 type stubHelp struct{ stubViewModel }
 
@@ -528,7 +530,9 @@ type stubCancelCompose struct{ stubViewModel }
 
 func (s *stubCancelCompose) Submitted() bool          { return false }
 func (s *stubCancelCompose) Cancelled() bool          { return true }
+func (s *stubCancelCompose) Expanded() bool           { return false }
 func (s *stubCancelCompose) IsTextInputFocused() bool { return true }
+func (s *stubCancelCompose) Expand()                  {}
 
 // stubDismissFactory returns a help that dismisses immediately on any key
 type stubDismissFactory struct{ stubFactory }

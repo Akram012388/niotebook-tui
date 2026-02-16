@@ -119,7 +119,9 @@ func (a *composeAdapter) View() string             { return a.model.View() }
 func (a *composeAdapter) HelpText() string         { return a.model.HelpText() }
 func (a *composeAdapter) Submitted() bool          { return a.model.Submitted() }
 func (a *composeAdapter) Cancelled() bool          { return a.model.Cancelled() }
+func (a *composeAdapter) Expanded() bool           { return a.model.Expanded() }
 func (a *composeAdapter) IsTextInputFocused() bool { return a.model.IsTextInputFocused() }
+func (a *composeAdapter) Expand()                  { a.model.Expand() }
 func (a *composeAdapter) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
 	m, cmd := a.model.Update(msg)
 	a.model = m

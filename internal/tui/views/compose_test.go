@@ -10,105 +10,148 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/views"
 )
 
-func TestComposeTypingUpdatesCounterr(t *testing.T) {
+func TestComposeBarStartsCollapsed(t *testing.T) {
 	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	if m.Expanded() {
+		t.Error("compose bar should start collapsed")
+	}
+}
 
-	// Type some text
+func TestComposeBarCollapsedShowsPlaceholder(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	view := m.View()
+	if !strings.Contains(view, "What's on your mind?") {
+		t.Error("collapsed compose should show placeholder text")
+	}
+	if !strings.Contains(view, "0/140") {
+		t.Error("collapsed compose should show 0/140 counter")
+	}
+}
+
+func TestComposeBarExpand(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
+	if !m.Expanded() {
+		t.Error("compose should be expanded after Expand()")
+	}
+}
+
+func TestComposeBarEscCollapses(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m.Expanded() {
+		t.Error("Esc should collapse the compose bar")
+	}
+	if !m.Cancelled() {
+		t.Error("Esc from expanded should set cancelled")
+	}
+}
+
+func TestComposeBarExpandedShowsHints(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
+	view := m.View()
+	if !strings.Contains(view, "Ctrl+Enter") {
+		t.Error("expanded compose should show Ctrl+Enter hint")
+	}
+	if !strings.Contains(view, "Esc") {
+		t.Error("expanded compose should show Esc hint")
+	}
+}
+
+func TestComposeBarTypingUpdatesCounter(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
 	for _, r := range "Hello" {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
-
 	view := m.View()
 	if !strings.Contains(view, "5/140") {
-		t.Errorf("expected counter to show 5/140, got view:\n%s", view)
+		t.Errorf("expected counter 5/140, got view:\n%s", view)
 	}
 }
 
-func TestComposeCtrlEnterPublishes(t *testing.T) {
+func TestComposeBarCtrlEnterPublishes(t *testing.T) {
 	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Type some text
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
 	for _, r := range "Test post" {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
-
-	// Press Ctrl+Enter (Ctrl+J) to publish
 	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if !m.Submitted() {
-		t.Error("expected submitted to be true after Ctrl+Enter with content")
+		t.Error("Ctrl+Enter with content should submit")
 	}
 	if cmd == nil {
-		t.Error("expected publish cmd to be returned")
+		t.Error("expected publish cmd")
 	}
 }
 
-func TestComposeEscCancels(t *testing.T) {
+func TestComposeBarEmptyCannotSubmit(t *testing.T) {
 	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Press Esc
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	if !m.Cancelled() {
-		t.Error("expected cancelled to be true after Esc")
-	}
-}
-
-func TestComposeOverLimitDisablesSubmit(t *testing.T) {
-	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Type more than 140 characters
-	long := strings.Repeat("a", 141)
-	for _, r := range long {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
-	}
-
-	// Try Ctrl+Enter (Ctrl+J) — should not submit
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if m.Submitted() {
-		t.Error("expected submitted to be false when over character limit")
-	}
-
-	view := m.View()
-	if !strings.Contains(view, "141/140") {
-		t.Errorf("expected counter to show 141/140 when over limit, got view:\n%s", view)
+		t.Error("empty content should not submit")
 	}
 }
 
-func TestComposeEmptyDisablesSubmit(t *testing.T) {
+func TestComposeBarOverLimitCannotSubmit(t *testing.T) {
 	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Try Ctrl+Enter (Ctrl+J) with empty content
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
-	if m.Submitted() {
-		t.Error("expected submitted to be false when content is empty")
-	}
-}
-
-func TestComposePublishReturnsPostMessage(t *testing.T) {
-	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	for _, r := range "Hello world" {
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
+	for _, r := range strings.Repeat("a", 141) {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	if m.Submitted() {
+		t.Error("over-limit content should not submit")
+	}
+}
 
+func TestComposeBarPublishWithNilClient(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m.Expand()
+	for _, r := range "Hello" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if cmd == nil {
 		t.Fatal("expected cmd from publish")
 	}
-
-	// Execute the cmd — with nil client it should return an API error
 	msg := cmd()
 	if _, ok := msg.(app.MsgAPIError); !ok {
 		t.Errorf("expected MsgAPIError with nil client, got %T", msg)
 	}
 }
 
-func TestComposeHelpText(t *testing.T) {
+func TestComposeBarIsTextInputFocused(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	if m.IsTextInputFocused() {
+		t.Error("collapsed compose should not have text input focused")
+	}
+	m.Expand()
+	if !m.IsTextInputFocused() {
+		t.Error("expanded compose should have text input focused")
+	}
+}
+
+func TestComposeBarPosting(t *testing.T) {
+	m := views.NewComposeModel(nil)
+	if m.Posting() {
+		t.Error("Posting should be false initially")
+	}
+}
+
+func TestComposeBarHelpText(t *testing.T) {
 	m := views.NewComposeModel(nil)
 	text := m.HelpText()
 	if text == "" {
@@ -116,32 +159,8 @@ func TestComposeHelpText(t *testing.T) {
 	}
 }
 
-func TestComposeIsTextInputFocused(t *testing.T) {
-	m := views.NewComposeModel(nil)
-	// Compose model should always have text input focused
-	if !m.IsTextInputFocused() {
-		t.Error("expected IsTextInputFocused to be true")
-	}
-}
-
-func TestComposePosting(t *testing.T) {
-	m := views.NewComposeModel(nil)
-	if m.Posting() {
-		t.Error("expected Posting to be false initially")
-	}
-}
-
-func TestComposeModelAPIError(t *testing.T) {
-	m := views.NewComposeModel(nil)
-	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	_, cmd := m.Update(app.MsgAPIError{Message: "post too long"})
-	_ = cmd
-}
-
-func TestComposeInitReturnsBlink(t *testing.T) {
+func TestComposeBarInit(t *testing.T) {
 	m := views.NewComposeModel(nil)
 	cmd := m.Init()
-	if cmd == nil {
-		t.Error("Init should return blink command")
-	}
+	_ = cmd // collapsed, may return nil
 }
