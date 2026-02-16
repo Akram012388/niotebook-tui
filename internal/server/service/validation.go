@@ -86,6 +86,53 @@ func ValidateEmail(email string) error {
 	return nil
 }
 
+func ValidateDisplayName(name string) error {
+	length := utf8.RuneCountInString(name)
+	if name == "" || length > 50 {
+		return &models.APIError{
+			Code: models.ErrCodeValidation, Field: "display_name",
+			Message: "Display name must be 1-50 characters",
+		}
+	}
+	if containsControlChars(name, false) {
+		return &models.APIError{
+			Code: models.ErrCodeValidation, Field: "display_name",
+			Message: "Display name contains invalid characters",
+		}
+	}
+	return nil
+}
+
+func ValidateBio(bio string) error {
+	if utf8.RuneCountInString(bio) > 160 {
+		return &models.APIError{
+			Code: models.ErrCodeValidation, Field: "bio",
+			Message: "Bio must be 160 characters or fewer",
+		}
+	}
+	if bio != "" && containsControlChars(bio, true) {
+		return &models.APIError{
+			Code: models.ErrCodeValidation, Field: "bio",
+			Message: "Bio contains invalid characters",
+		}
+	}
+	return nil
+}
+
+// containsControlChars checks for control characters.
+// If allowNewline is true, \n and \r are permitted (for bio).
+func containsControlChars(s string, allowNewline bool) bool {
+	for _, r := range s {
+		if r < 32 && r != '\t' {
+			if allowNewline && (r == '\n' || r == '\r') {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
 func ValidatePassword(password string) error {
 	if len(password) < 8 {
 		return &models.APIError{

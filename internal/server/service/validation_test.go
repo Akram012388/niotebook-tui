@@ -87,6 +87,53 @@ func TestValidateEmail(t *testing.T) {
 	}
 }
 
+func TestValidateDisplayName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid", "Akram", false},
+		{"empty", "", true},
+		{"max 50", strings.Repeat("a", 50), false},
+		{"too long 51", strings.Repeat("a", 51), true},
+		{"control char", "hello\x00world", true},
+		{"tab allowed", "hello\tworld", false},
+		{"newline rejected", "hello\nworld", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := service.ValidateDisplayName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateDisplayName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateBio(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid", "Building things.", false},
+		{"empty allowed", "", false},
+		{"max 160", strings.Repeat("a", 160), false},
+		{"too long 161", strings.Repeat("a", 161), true},
+		{"control char", "bio\x00text", true},
+		{"newline allowed", "line1\nline2", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := service.ValidateBio(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateBio(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidatePassword(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"unicode/utf8"
 
 	"github.com/Akram012388/niotebook-tui/internal/models"
 	"github.com/Akram012388/niotebook-tui/internal/server/store"
@@ -22,19 +21,13 @@ func (s *UserService) GetUserByID(ctx context.Context, id string) (*models.User,
 
 func (s *UserService) UpdateUser(ctx context.Context, id string, updates *models.UserUpdate) (*models.User, error) {
 	if updates.DisplayName != nil {
-		if utf8.RuneCountInString(*updates.DisplayName) > 50 || *updates.DisplayName == "" {
-			return nil, &models.APIError{
-				Code: models.ErrCodeValidation, Field: "display_name",
-				Message: "Display name must be 1-50 characters",
-			}
+		if err := ValidateDisplayName(*updates.DisplayName); err != nil {
+			return nil, err
 		}
 	}
 	if updates.Bio != nil {
-		if utf8.RuneCountInString(*updates.Bio) > 160 {
-			return nil, &models.APIError{
-				Code: models.ErrCodeValidation, Field: "bio",
-				Message: "Bio must be 160 characters or fewer",
-			}
+		if err := ValidateBio(*updates.Bio); err != nil {
+			return nil, err
 		}
 	}
 	return s.users.UpdateUser(ctx, id, updates)
