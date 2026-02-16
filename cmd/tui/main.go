@@ -63,7 +63,7 @@ func main() {
 
 	// Create and run app
 	factory := views.NewFactory()
-	model := app.NewAppModelWithFactory(c, storedAuth, factory)
+	model := app.NewAppModelWithFactory(c, storedAuth, factory, cfg.ServerURL)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

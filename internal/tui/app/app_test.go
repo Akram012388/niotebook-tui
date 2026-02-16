@@ -8,6 +8,7 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/models"
 	"github.com/Akram012388/niotebook-tui/internal/tui/app"
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
+	"github.com/Akram012388/niotebook-tui/internal/tui/config"
 )
 
 // stubViewModel is a minimal ViewModel for testing.
@@ -63,10 +64,58 @@ func update(m app.AppModel, msg tea.Msg) app.AppModel {
 	return result.(app.AppModel)
 }
 
+// connectAndAuth simulates the splash -> server connected -> auth success flow
+// that most tests need to reach the authenticated state.
+func connectAndAuth(m app.AppModel, user *models.User, tokens *models.TokenPair) app.AppModel {
+	m = update(m, app.MsgServerConnected{})
+	m = update(m, app.MsgAuthSuccess{User: user, Tokens: tokens})
+	return m
+}
+
+// connectServer simulates the splash -> server connected flow to reach login.
+func connectServer(m app.AppModel) app.AppModel {
+	return update(m, app.MsgServerConnected{})
+}
+
 func TestAppModelStartsOnLogin(t *testing.T) {
 	m := app.NewAppModel(nil, nil) // no stored auth
 	if m.CurrentView() != app.ViewLogin {
 		t.Errorf("initial view = %v, want ViewLogin", m.CurrentView())
+	}
+}
+
+func TestAppModelWithFactoryStartsOnSplash(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	if m.CurrentView() != app.ViewSplash {
+		t.Errorf("initial view = %v, want ViewSplash", m.CurrentView())
+	}
+}
+
+func TestAppModelServerConnectedTransitionsToLogin(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = update(m, app.MsgServerConnected{})
+	if m.CurrentView() != app.ViewLogin {
+		t.Errorf("view after server connected = %v, want ViewLogin", m.CurrentView())
+	}
+}
+
+func TestAppModelServerConnectedWithStoredAuthGoesToTimeline(t *testing.T) {
+	storedAuth := &config.StoredAuth{
+		AccessToken:  "stored-token",
+		RefreshToken: "stored-refresh",
+	}
+	m := app.NewAppModelWithFactory(nil, storedAuth, &stubFactory{}, "")
+	m = update(m, app.MsgServerConnected{})
+	if m.CurrentView() != app.ViewTimeline {
+		t.Errorf("view = %v, want ViewTimeline with stored auth", m.CurrentView())
+	}
+}
+
+func TestAppModelServerFailedStaysOnSplash(t *testing.T) {
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = update(m, app.MsgServerFailed{Err: "connection refused"})
+	if m.CurrentView() != app.ViewSplash {
+		t.Errorf("view = %v, want ViewSplash after server failed", m.CurrentView())
 	}
 }
 
@@ -82,12 +131,8 @@ func TestAppModelAuthSuccessSwitchesToTimeline(t *testing.T) {
 }
 
 func TestAppModelNOpensCompose(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	// Simulate logged in on timeline
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	if !m.IsComposeOpen() {
 		t.Error("expected compose to be open after pressing n")
@@ -95,11 +140,8 @@ func TestAppModelNOpensCompose(t *testing.T) {
 }
 
 func TestAppModelQuestionMarkOpensHelp(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	// Help should now be open — view name should reflect it
 	if m.View() == "" {
@@ -108,11 +150,8 @@ func TestAppModelQuestionMarkOpensHelp(t *testing.T) {
 }
 
 func TestAppModelQQuitsOnTimeline(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
 		t.Error("expected quit command on q press")
@@ -128,7 +167,8 @@ func TestAppModelCtrlCAlwaysQuits(t *testing.T) {
 }
 
 func TestAppModelSwitchToRegister(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectServer(m)
 	m = update(m, app.MsgSwitchToRegister{})
 	if m.CurrentView() != app.ViewRegister {
 		t.Errorf("view = %v, want ViewRegister", m.CurrentView())
@@ -136,7 +176,8 @@ func TestAppModelSwitchToRegister(t *testing.T) {
 }
 
 func TestAppModelSwitchToLogin(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectServer(m)
 	m = update(m, app.MsgSwitchToRegister{}) // go to register first
 	m = update(m, app.MsgSwitchToLogin{})
 	if m.CurrentView() != app.ViewLogin {
@@ -145,11 +186,8 @@ func TestAppModelSwitchToLogin(t *testing.T) {
 }
 
 func TestAppModelAPIErrorShowsInStatusBar(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, app.MsgAPIError{Message: "server error"})
 	view := m.View()
@@ -159,11 +197,8 @@ func TestAppModelAPIErrorShowsInStatusBar(t *testing.T) {
 }
 
 func TestAppModelAuthExpiredReturnsToLogin(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, app.MsgAuthExpired{})
 	if m.CurrentView() != app.ViewLogin {
 		t.Errorf("view = %v, want ViewLogin after auth expired", m.CurrentView())
@@ -171,11 +206,8 @@ func TestAppModelAuthExpiredReturnsToLogin(t *testing.T) {
 }
 
 func TestAppModelWindowResize(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
 	// Should not panic
 	view := m.View()
@@ -185,18 +217,15 @@ func TestAppModelWindowResize(t *testing.T) {
 }
 
 func TestAppModelInitWithFactory(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
 	cmd := m.Init()
-	// Init should return login's Init command (nil from stub)
+	// Init should return splash's Init command (nil from stub)
 	_ = cmd
 }
 
 func TestAppModelPOpensOwnProfile(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	if m.CurrentView() != app.ViewProfile {
 		t.Errorf("view = %v, want ViewProfile after p", m.CurrentView())
@@ -204,11 +233,8 @@ func TestAppModelPOpensOwnProfile(t *testing.T) {
 }
 
 func TestAppModelPostPublished(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open compose
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	if !m.IsComposeOpen() {
@@ -222,11 +248,8 @@ func TestAppModelPostPublished(t *testing.T) {
 }
 
 func TestAppModelStatusClear(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, app.MsgStatusClear{})
 	// Should not panic
 	view := m.View()
@@ -237,11 +260,8 @@ func TestAppModelStatusClear(t *testing.T) {
 
 func TestAppModelComposeCancelClosesOverlay(t *testing.T) {
 	cancelFactory := &stubCancelFactory{}
-	m := app.NewAppModelWithFactory(nil, nil, cancelFactory)
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, cancelFactory, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open compose
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	if !m.IsComposeOpen() {
@@ -256,11 +276,8 @@ func TestAppModelComposeCancelClosesOverlay(t *testing.T) {
 
 func TestAppModelHelpDismissClosesOverlay(t *testing.T) {
 	dismissFactory := &stubDismissFactory{}
-	m := app.NewAppModelWithFactory(nil, nil, dismissFactory)
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, dismissFactory, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open help
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	// Dismiss with Esc — stub help returns dismissed=true on any key
@@ -273,11 +290,8 @@ func TestAppModelHelpDismissClosesOverlay(t *testing.T) {
 }
 
 func TestAppModelRRefreshesTimeline(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Press r to refresh
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	// Should return a command (nil from stub FetchLatest)
@@ -285,11 +299,8 @@ func TestAppModelRRefreshesTimeline(t *testing.T) {
 }
 
 func TestAppModelProfileLoaded(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	// Send profile loaded
@@ -303,11 +314,8 @@ func TestAppModelProfileLoaded(t *testing.T) {
 }
 
 func TestAppModelProfileUpdated(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	// Send profile updated
@@ -320,11 +328,8 @@ func TestAppModelProfileUpdated(t *testing.T) {
 }
 
 func TestAppModelTimelineLoadedRouting(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, app.MsgTimelineLoaded{
 		Posts:   []models.Post{{ID: "1"}},
 		HasMore: false,
@@ -337,14 +342,16 @@ func TestAppModelTimelineLoadedRouting(t *testing.T) {
 }
 
 func TestAppModelLoginViewRendering(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	// Before auth, should render login view
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectServer(m)
+	// After server connect, should render login view
 	view := m.View()
 	_ = view // Just ensure no panic
 }
 
 func TestAppModelRegisterViewRendering(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectServer(m)
 	m = update(m, app.MsgSwitchToRegister{})
 	view := m.View()
 	_ = view // Just ensure no panic
@@ -352,11 +359,8 @@ func TestAppModelRegisterViewRendering(t *testing.T) {
 
 func TestAppModelProfileDismissReturnsToTimeline(t *testing.T) {
 	dismissProfileFactory := &stubDismissProfileFactory{}
-	m := app.NewAppModelWithFactory(nil, nil, dismissProfileFactory)
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, dismissProfileFactory, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	if m.CurrentView() != app.ViewProfile {
@@ -371,11 +375,8 @@ func TestAppModelProfileDismissReturnsToTimeline(t *testing.T) {
 
 func TestAppModelComposeBlocksTimelineShortcuts(t *testing.T) {
 	trackFactory := &stubTrackFactory{}
-	m := app.NewAppModelWithFactory(nil, nil, trackFactory)
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, trackFactory, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open compose
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	if !m.IsComposeOpen() {
@@ -391,11 +392,8 @@ func TestAppModelComposeBlocksTimelineShortcuts(t *testing.T) {
 
 func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
 	trackFactory := &stubTrackFactory{}
-	m := app.NewAppModelWithFactory(nil, nil, trackFactory)
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, trackFactory, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	if m.CurrentView() != app.ViewTimeline {
 		t.Fatalf("view = %v, want ViewTimeline", m.CurrentView())
 	}
@@ -415,11 +413,8 @@ func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
 }
 
 func TestAppModelHelpOnProfile(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	if m.CurrentView() != app.ViewProfile {
@@ -434,11 +429,8 @@ func TestAppModelHelpOnProfile(t *testing.T) {
 }
 
 func TestAppModelWindowResizeWithOverlays(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	// Open compose
@@ -452,11 +444,8 @@ func TestAppModelWindowResizeWithOverlays(t *testing.T) {
 }
 
 func TestAppModelWindowResizeWithHelp(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
 	view := m.View()
@@ -466,11 +455,8 @@ func TestAppModelWindowResizeWithHelp(t *testing.T) {
 }
 
 func TestAppModelNFromProfile(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	// Open profile
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	// Open compose from profile
@@ -481,7 +467,8 @@ func TestAppModelNFromProfile(t *testing.T) {
 }
 
 func TestAppModelRegisterKeyRouting(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectServer(m)
 	m = update(m, app.MsgSwitchToRegister{})
 	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	// Key routing to register view — should not panic
@@ -493,11 +480,8 @@ func TestAppModelRegisterKeyRouting(t *testing.T) {
 }
 
 func TestAppModelProfileViewContent(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{ID: "u1", Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{ID: "u1", Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	view := m.View()
@@ -507,11 +491,8 @@ func TestAppModelProfileViewContent(t *testing.T) {
 }
 
 func TestAppModelComposeViewName(t *testing.T) {
-	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{})
-	m = update(m, app.MsgAuthSuccess{
-		User:   &models.User{Username: "akram"},
-		Tokens: &models.TokenPair{AccessToken: "tok"},
-	})
+	m := app.NewAppModelWithFactory(nil, nil, &stubFactory{}, "")
+	m = connectAndAuth(m, &models.User{Username: "akram"}, &models.TokenPair{AccessToken: "tok"})
 	m = update(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	view := m.View()

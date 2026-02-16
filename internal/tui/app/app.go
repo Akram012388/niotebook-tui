@@ -8,6 +8,7 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/client"
 	"github.com/Akram012388/niotebook-tui/internal/tui/components"
 	"github.com/Akram012388/niotebook-tui/internal/tui/config"
+	"github.com/Akram012388/niotebook-tui/internal/tui/layout"
 )
 
 // View identifiers for the root model.
@@ -87,17 +88,22 @@ const (
 // shared state, and view routing.
 type AppModel struct {
 	// Shared state
-	client  *client.Client
-	user    *models.User
-	tokens  *models.TokenPair
-	width   int
-	height  int
-	factory ViewFactory
+	client    *client.Client
+	serverURL string
+	user      *models.User
+	tokens    *models.TokenPair
+	width     int
+	height    int
+	factory   ViewFactory
+
+	// Stored auth for post-splash transition
+	storedAuth *config.StoredAuth
 
 	// Current view
 	currentView View
 
 	// Sub-models
+	splash   SplashViewModel
 	login    ViewModel
 	register ViewModel
 	timeline TimelineViewModel
@@ -124,14 +130,14 @@ func NewAppModel(c *client.Client, storedAuth *config.StoredAuth) AppModel {
 
 // NewAppModelWithFactory creates the root app model with a view factory to
 // break the import cycle between app and views.
-func NewAppModelWithFactory(c *client.Client, storedAuth *config.StoredAuth, f ViewFactory) AppModel {
+func NewAppModelWithFactory(c *client.Client, storedAuth *config.StoredAuth, f ViewFactory, serverURL string) AppModel {
 	m := AppModel{
 		client:      c,
-		currentView: ViewLogin,
+		serverURL:   serverURL,
+		currentView: ViewSplash,
 		factory:     f,
-		login:       f.NewLogin(c),
-		register:    f.NewRegister(c),
-		timeline:    f.NewTimeline(c),
+		storedAuth:  storedAuth,
+		splash:      f.NewSplash(serverURL),
 		statusBar:   components.NewStatusBarModel(),
 	}
 	return m
@@ -166,6 +172,9 @@ func (m AppModel) isTextInputFocused() bool {
 
 // Init satisfies tea.Model.
 func (m AppModel) Init() tea.Cmd {
+	if m.currentView == ViewSplash && m.splash != nil {
+		return m.splash.Init()
+	}
 	if m.login != nil {
 		return m.login.Init()
 	}
@@ -313,48 +322,120 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.login.Init()
 		}
 		return m, nil
+
+	case MsgServerConnected:
+		// Server is reachable. Create login/register/timeline views now.
+		if m.factory != nil {
+			m.login = m.factory.NewLogin(m.client)
+			m.register = m.factory.NewRegister(m.client)
+			m.timeline = m.factory.NewTimeline(m.client)
+		}
+		// If stored auth has tokens, skip login and go to timeline.
+		if m.storedAuth != nil && m.storedAuth.AccessToken != "" {
+			if m.client != nil {
+				m.client.SetToken(m.storedAuth.AccessToken)
+				m.client.SetRefreshToken(m.storedAuth.RefreshToken)
+			}
+			m.currentView = ViewTimeline
+			if m.timeline != nil {
+				return m, m.timeline.FetchLatest()
+			}
+			return m, nil
+		}
+		m.currentView = ViewLogin
+		if m.login != nil {
+			return m, m.login.Init()
+		}
+		return m, nil
+
+	case MsgServerFailed:
+		// Stay on splash — splash handles retry internally.
+		if m.splash != nil {
+			var updated ViewModel
+			var cmd tea.Cmd
+			updated, cmd = m.splash.Update(msg)
+			if sv, ok := updated.(SplashViewModel); ok {
+				m.splash = sv
+			}
+			return m, cmd
+		}
+		return m, nil
+	}
+
+	// Route to splash if it's the current view
+	if m.currentView == ViewSplash {
+		if m.splash != nil {
+			var updated ViewModel
+			var cmd tea.Cmd
+			updated, cmd = m.splash.Update(msg)
+			if sv, ok := updated.(SplashViewModel); ok {
+				m.splash = sv
+			}
+			return m, cmd
+		}
+		return m, nil
 	}
 
 	return m.updateCurrentView(msg)
 }
 
-// View satisfies tea.Model. Layout: header + content + status bar.
+// View satisfies tea.Model.
 func (m AppModel) View() string {
-	// Before auth, render only the auth view (no header/status bar)
+	// Splash: full-screen, no chrome
+	if m.currentView == ViewSplash {
+		if m.splash != nil {
+			return m.splash.View()
+		}
+		return ""
+	}
+
+	// Auth views: centered, no sidebar
 	if m.currentView == ViewLogin || m.currentView == ViewRegister {
 		return m.viewCurrentContent()
 	}
 
-	// Header
-	username := ""
-	if m.user != nil {
-		username = m.user.Username
-	}
-	viewName := m.viewName()
-	header := components.RenderHeader("niotebook", username, viewName, m.width)
+	// Authenticated views: three-column layout
+	cols := layout.ComputeColumns(m.width)
 
-	// Content area: total height minus header (1 line) and status bar (1 line)
-	contentHeight := m.height - 2
+	// Content area height (full height minus status bar)
+	contentHeight := m.height - 1
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
 
+	// Center content
 	content := m.viewCurrentContent()
-
-	// If an overlay is open, render it on top of the content
 	if m.help != nil {
 		content = m.help.View()
 	} else if m.compose != nil {
 		content = m.compose.View()
 	}
 
-	content = lipgloss.NewStyle().Height(contentHeight).Render(content)
-
-	// Status bar
+	// Status bar at bottom of center column
 	helpText := m.currentHelpText()
-	statusBar := m.statusBar.View(helpText, m.width)
+	statusBar := m.statusBar.View(helpText, cols.Center)
+	centerContent := lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().Height(contentHeight-1).Render(content),
+		statusBar,
+	)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, content, statusBar)
+	// Left sidebar
+	leftContent := components.RenderSidebar(
+		m.user,
+		components.View(m.currentView),
+		cols.Left,
+		contentHeight,
+	)
+
+	// Right sidebar
+	rightContent := components.RenderShortcuts(
+		components.View(m.currentView),
+		m.compose != nil,
+		cols.Right,
+		contentHeight,
+	)
+
+	return layout.RenderColumns(m.width, m.height, leftContent, centerContent, rightContent)
 }
 
 // handleAuthSuccess transitions from login/register to the timeline.
@@ -461,6 +542,14 @@ func (m AppModel) updateHelp(msg tea.Msg) (AppModel, tea.Cmd) {
 func (m AppModel) updateCurrentView(msg tea.Msg) (AppModel, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.currentView {
+	case ViewSplash:
+		if m.splash != nil {
+			var updated ViewModel
+			updated, cmd = m.splash.Update(msg)
+			if sv, ok := updated.(SplashViewModel); ok {
+				m.splash = sv
+			}
+		}
 	case ViewLogin:
 		if m.login != nil {
 			var updated ViewModel
@@ -501,6 +590,15 @@ func (m AppModel) updateCurrentView(msg tea.Msg) (AppModel, tea.Cmd) {
 func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	if m.splash != nil {
+		var updated ViewModel
+		var cmd tea.Cmd
+		updated, cmd = m.splash.Update(msg)
+		if sv, ok := updated.(SplashViewModel); ok {
+			m.splash = sv
+		}
+		cmds = append(cmds, cmd)
+	}
 	if m.login != nil {
 		var cmd tea.Cmd
 		m.login, cmd = m.login.Update(msg)
@@ -554,6 +652,10 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 // viewCurrentContent returns the rendered content for the active view.
 func (m AppModel) viewCurrentContent() string {
 	switch m.currentView {
+	case ViewSplash:
+		if m.splash != nil {
+			return m.splash.View()
+		}
 	case ViewLogin:
 		if m.login != nil {
 			return m.login.View()
