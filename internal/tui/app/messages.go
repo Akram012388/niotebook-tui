@@ -46,3 +46,6 @@ type MsgStatusClear struct{}
 // Server connection messages (splash screen)
 type MsgServerConnected struct{}
 type MsgServerFailed struct{ Err string }
+
+// Splash animation messages
+type MsgRevealTick struct{}

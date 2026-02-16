@@ -18,6 +18,21 @@ import (
 // user can see the brand animation before transitioning.
 const MinSplashDuration = 2500 * time.Millisecond
 
+// Animation timing
+const (
+	revealTickInterval = 40 * time.Millisecond // per-character reveal speed
+	taglinePause       = 200 * time.Millisecond
+)
+
+// splashPhase tracks the current animation phase.
+type splashPhase int
+
+const (
+	phaseReveal     splashPhase = iota // typewriter logo reveal
+	phaseTagline                       // tagline appearing
+	phaseConnecting                    // spinner + status
+)
+
 // BlockSpinnerFrames returns the four styled frames for the custom block
 // spinner. Each frame is a string of three block characters separated by
 // spaces, progressively filling from light shade to full block.
@@ -51,20 +66,28 @@ func newBlockSpinner() spinner.Model {
 // SplashModel is the splash screen shown on app launch while connecting
 // to the server.
 type SplashModel struct {
-	serverURL string
-	spinner   spinner.Model
-	done      bool
-	failed    bool
-	err       string
-	width     int
-	height    int
+	serverURL   string
+	spinner     spinner.Model
+	done        bool
+	failed      bool
+	err         string
+	width       int
+	height      int
+	phase       splashPhase
+	revealIndex int    // how many chars of the logo to show
+	logoText    string // the full plain-text logo for counting
+	showTagline bool
 }
 
 // NewSplashModel creates a new splash screen model.
 func NewSplashModel(serverURL string) SplashModel {
+	// The plain text of the splash logo for character counting: "n i o t e b o o k"
+	logoPlain := "n i o t e b o o k"
 	return SplashModel{
 		serverURL: serverURL,
 		spinner:   newBlockSpinner(),
+		phase:     phaseReveal,
+		logoText:  logoPlain,
 	}
 }
 
@@ -80,9 +103,27 @@ func (m SplashModel) ErrorMessage() string { return m.err }
 // HelpText returns an empty string since the splash screen has no help.
 func (m SplashModel) HelpText() string { return "" }
 
-// Init returns the initial commands: start the spinner and check server health.
+// Init returns the initial commands: start the typewriter reveal and check server health.
 func (m SplashModel) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, m.checkHealth())
+	return tea.Batch(
+		m.revealTick(),
+		m.checkHealth(),
+	)
+}
+
+func (m SplashModel) revealTick() tea.Cmd {
+	return tea.Tick(revealTickInterval, func(_ time.Time) tea.Msg {
+		return app.MsgRevealTick{}
+	})
+}
+
+// Internal message for splash animation
+type msgTaglineShow struct{}
+
+func (m SplashModel) taglinePauseCmd() tea.Cmd {
+	return tea.Tick(taglinePause, func(_ time.Time) tea.Msg {
+		return msgTaglineShow{}
+	})
 }
 
 // Update handles messages for the splash screen.
@@ -101,6 +142,23 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 		m.failed = true
 		m.err = msg.Err
 		return m, nil
+
+	case app.MsgRevealTick:
+		if m.phase == phaseReveal {
+			m.revealIndex++
+			if m.revealIndex >= len([]rune(m.logoText)) {
+				// Logo fully revealed, pause then show tagline
+				m.phase = phaseTagline
+				return m, m.taglinePauseCmd()
+			}
+			return m, m.revealTick()
+		}
+		return m, nil
+
+	case msgTaglineShow:
+		m.showTagline = true
+		m.phase = phaseConnecting
+		return m, m.spinner.Tick
 
 	case tea.KeyMsg:
 		if m.failed {
@@ -121,7 +179,7 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		if !m.done && !m.failed {
+		if m.phase == phaseConnecting && !m.done && !m.failed {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
@@ -136,31 +194,68 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 func (m SplashModel) View() string {
 	var b strings.Builder
 
-	// Logo (splash variant with letter-spacing)
-	b.WriteString(theme.LogoSplash())
+	// Render logo with typewriter reveal
+	b.WriteString(m.renderRevealLogo())
 	b.WriteString("\n")
 
-	// Tagline (splash variant with letter-spacing)
-	b.WriteString(theme.TaglineSplash())
-	b.WriteString("\n\n")
-
-	if m.failed {
-		// Error state
-		errStyle := lipgloss.NewStyle().Foreground(theme.Error)
-		b.WriteString(errStyle.Render(fmt.Sprintf("connection failed: %s", m.err)))
+	// Tagline (only after reveal completes)
+	if m.showTagline {
+		b.WriteString(theme.TaglineSplash())
 		b.WriteString("\n\n")
-		b.WriteString(theme.Hint.Render("press r to retry · q to quit"))
-	} else if !m.done {
-		// Connecting state — spinner centered below tagline
-		b.WriteString(m.spinner.View())
-		b.WriteString("\n")
-		b.WriteString(theme.Caption.Render("connecting..."))
+	} else {
+		b.WriteString("\n\n")
+	}
+
+	// Connection status (only in connecting phase)
+	if m.phase == phaseConnecting {
+		if m.failed {
+			errStyle := lipgloss.NewStyle().Foreground(theme.Error)
+			b.WriteString(errStyle.Render(fmt.Sprintf("connection failed: %s", m.err)))
+			b.WriteString("\n\n")
+			b.WriteString(theme.Hint.Render("press r to retry · q to quit"))
+		} else if !m.done {
+			b.WriteString(m.spinner.View())
+			b.WriteString("\n")
+			b.WriteString(theme.Caption.Render("connecting..."))
+		}
 	}
 	// If done, just show logo + tagline (about to transition)
 
 	content := b.String()
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func (m SplashModel) renderRevealLogo() string {
+	text := lipgloss.NewStyle().Bold(true).Foreground(theme.Text)
+	accent := lipgloss.NewStyle().Bold(true).Foreground(theme.Accent)
+
+	letters := []struct {
+		char  string
+		style lipgloss.Style
+	}{
+		{"n", text}, {"i", accent}, {"o", text}, {"t", text},
+		{"e", text}, {"b", text}, {"o", text}, {"o", text}, {"k", text},
+	}
+
+	// Build the spaced logo: "n i o t e b o o k"
+	// Each letter takes 2 chars in the plain text (char + space), except the last
+	var revealed strings.Builder
+	charIndex := 0
+	for i, l := range letters {
+		if charIndex >= m.revealIndex {
+			break
+		}
+		revealed.WriteString(l.style.Render(l.char))
+		charIndex++
+		// Add space between letters (except after last)
+		if i < len(letters)-1 && charIndex < m.revealIndex {
+			revealed.WriteString(" ")
+			charIndex++
+		}
+	}
+
+	return revealed.String()
 }
 
 // checkHealth returns a tea.Cmd that makes an HTTP GET request to the
