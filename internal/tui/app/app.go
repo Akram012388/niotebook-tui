@@ -239,7 +239,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var updated ViewModel
 			var cmd tea.Cmd
 			updated, cmd = m.timeline.Update(msg)
-			m.timeline = updated.(TimelineViewModel)
+			if tl, ok := updated.(TimelineViewModel); ok {
+				m.timeline = tl
+			}
 			return m, cmd
 		}
 		return m, nil
@@ -258,7 +260,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var updated ViewModel
 			var cmd tea.Cmd
 			updated, cmd = m.profile.Update(msg)
-			m.profile = updated.(ProfileViewModel)
+			if pv, ok := updated.(ProfileViewModel); ok {
+				m.profile = pv
+			}
 			return m, cmd
 		}
 		return m, nil
@@ -268,7 +272,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var updated ViewModel
 			var cmd tea.Cmd
 			updated, cmd = m.profile.Update(msg)
-			m.profile = updated.(ProfileViewModel)
+			if pv, ok := updated.(ProfileViewModel); ok {
+				m.profile = pv
+			}
 			if msg.User != nil && m.user != nil && msg.User.ID == m.user.ID {
 				m.user = msg.User
 			}
@@ -390,7 +396,9 @@ func (m AppModel) openHelp() (AppModel, tea.Cmd) {
 	}
 	m.help = m.factory.NewHelp(viewName)
 	updated, _ := m.help.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
-	m.help = updated.(HelpViewModel)
+	if hv, ok := updated.(HelpViewModel); ok {
+		m.help = hv
+	}
 	return m, nil
 }
 
@@ -410,7 +418,9 @@ func (m AppModel) updateCompose(msg tea.Msg) (AppModel, tea.Cmd) {
 	var updated ViewModel
 	var cmd tea.Cmd
 	updated, cmd = m.compose.Update(msg)
-	m.compose = updated.(ComposeViewModel)
+	if cv, ok := updated.(ComposeViewModel); ok {
+		m.compose = cv
+	}
 
 	if m.compose.Cancelled() {
 		m.compose = nil
@@ -425,7 +435,9 @@ func (m AppModel) updateHelp(msg tea.Msg) (AppModel, tea.Cmd) {
 	var updated ViewModel
 	var cmd tea.Cmd
 	updated, cmd = m.help.Update(msg)
-	m.help = updated.(HelpViewModel)
+	if hv, ok := updated.(HelpViewModel); ok {
+		m.help = hv
+	}
 
 	if m.help.Dismissed() {
 		m.help = nil
@@ -455,13 +467,17 @@ func (m AppModel) updateCurrentView(msg tea.Msg) (AppModel, tea.Cmd) {
 		if m.timeline != nil {
 			var updated ViewModel
 			updated, cmd = m.timeline.Update(msg)
-			m.timeline = updated.(TimelineViewModel)
+			if tl, ok := updated.(TimelineViewModel); ok {
+				m.timeline = tl
+			}
 		}
 	case ViewProfile:
 		if m.profile != nil {
 			var updated ViewModel
 			updated, cmd = m.profile.Update(msg)
-			m.profile = updated.(ProfileViewModel)
+			if pv, ok := updated.(ProfileViewModel); ok {
+				m.profile = pv
+			}
 			if m.profile.Dismissed() {
 				m.currentView = ViewTimeline
 				return m, nil
@@ -482,22 +498,30 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 	if m.timeline != nil {
 		var updated ViewModel
 		updated, _ = m.timeline.Update(msg)
-		m.timeline = updated.(TimelineViewModel)
+		if tl, ok := updated.(TimelineViewModel); ok {
+			m.timeline = tl
+		}
 	}
 	if m.profile != nil {
 		var updated ViewModel
 		updated, _ = m.profile.Update(msg)
-		m.profile = updated.(ProfileViewModel)
+		if pv, ok := updated.(ProfileViewModel); ok {
+			m.profile = pv
+		}
 	}
 	if m.compose != nil {
 		var updated ViewModel
 		updated, _ = m.compose.Update(msg)
-		m.compose = updated.(ComposeViewModel)
+		if cv, ok := updated.(ComposeViewModel); ok {
+			m.compose = cv
+		}
 	}
 	if m.help != nil {
 		var updated ViewModel
 		updated, _ = m.help.Update(msg)
-		m.help = updated.(HelpViewModel)
+		if hv, ok := updated.(HelpViewModel); ok {
+			m.help = hv
+		}
 	}
 
 	return m, nil
