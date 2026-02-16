@@ -127,7 +127,7 @@ func RenderColumns(width, height int, focus FocusColumn, leftContent, centerCont
 	}
 
 	colStyle := func(w int) lipgloss.Style {
-		return lipgloss.NewStyle().Width(w).Height(contentHeight)
+		return lipgloss.NewStyle().Width(w).Height(contentHeight).MaxHeight(contentHeight)
 	}
 
 	switch cols.Mode {

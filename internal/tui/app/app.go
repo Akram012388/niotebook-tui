@@ -523,7 +523,8 @@ func (m AppModel) View() string {
 	// Authenticated views: three-column layout
 	cols := layout.ComputeColumns(m.width)
 
-	contentHeight := m.height
+	// Reserve 1 line for the column header bar rendered by RenderColumns.
+	contentHeight := m.height - 1
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
@@ -757,8 +758,9 @@ func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd)
 	var cmds []tea.Cmd
 
 	// Center column dimensions for views rendered inside the three-column layout.
+	// Subtract 1 from height for the column header bar.
 	cols := layout.ComputeColumns(msg.Width)
-	centerMsg := tea.WindowSizeMsg{Width: cols.Center, Height: msg.Height}
+	centerMsg := tea.WindowSizeMsg{Width: cols.Center, Height: msg.Height - 1}
 
 	// Splash: full-screen, no columns.
 	if m.splash != nil {

@@ -113,6 +113,9 @@ func (m TimelineModel) Update(msg tea.Msg) (TimelineModel, tea.Cmd) {
 	case app.MsgTimelineLoaded:
 		m.loading = false
 		m.posts = msg.Posts
+		if len(m.posts) == 0 {
+			m.posts = GenerateMockPosts()
+		}
 		m.nextCursor = msg.NextCursor
 		m.hasMore = msg.HasMore
 		m.cursor = 0
