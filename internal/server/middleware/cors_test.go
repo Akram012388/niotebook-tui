@@ -48,7 +48,22 @@ func TestCORSNonPreflightHasHeaders(t *testing.T) {
 	}
 }
 
-func TestCORSDefaultOrigin(t *testing.T) {
+func TestCORSDefaultOriginEchosRequestOrigin(t *testing.T) {
+	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Origin", "https://myapp.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://myapp.com" {
+		t.Errorf("CORS default origin = %q, want %q", got, "https://myapp.com")
+	}
+}
+
+func TestCORSDefaultOriginNoOriginHeader(t *testing.T) {
 	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -57,7 +72,43 @@ func TestCORSDefaultOrigin(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Errorf("CORS default origin = %q, want %q", got, "*")
+	got := rec.Header().Get("Access-Control-Allow-Origin")
+	if got == "*" {
+		t.Error("empty origin with no Origin header should NOT default to wildcard *")
+	}
+	if got != "null" {
+		t.Errorf("CORS origin = %q, want %q", got, "null")
+	}
+}
+
+func TestCORSSecurityHeaders(t *testing.T) {
+	handler := middleware.CORS("https://example.com")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/api/v1/timeline", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want %q", got, "nosniff")
+	}
+	if got := rec.Header().Get("X-Frame-Options"); got != "DENY" {
+		t.Errorf("X-Frame-Options = %q, want %q", got, "DENY")
+	}
+}
+
+func TestCORSEmptyOriginDefaultsToSelf(t *testing.T) {
+	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	got := rec.Header().Get("Access-Control-Allow-Origin")
+	if got == "*" {
+		t.Error("empty origin should NOT default to wildcard *")
 	}
 }
