@@ -15,7 +15,6 @@ func HandleHealth(pool *pgxpool.Pool) http.HandlerFunc {
 		defer cancel()
 
 		if err := pool.Ping(ctx); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
 				"status":  "error",
 				"message": "database connection failed",
