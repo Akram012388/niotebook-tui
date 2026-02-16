@@ -48,7 +48,7 @@ func TestCORSNonPreflightHasHeaders(t *testing.T) {
 	}
 }
 
-func TestCORSDefaultOriginEchosRequestOrigin(t *testing.T) {
+func TestCORSEmptyOriginSkipsCORSHeaders(t *testing.T) {
 	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -58,26 +58,26 @@ func TestCORSDefaultOriginEchosRequestOrigin(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://myapp.com" {
-		t.Errorf("CORS default origin = %q, want %q", got, "https://myapp.com")
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("expected no CORS origin header when empty, got %q", got)
 	}
 }
 
-func TestCORSDefaultOriginNoOriginHeader(t *testing.T) {
+func TestCORSEmptyOriginRejectsReflection(t *testing.T) {
 	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/api/v1/posts", nil)
+	req.Header.Set("Origin", "https://evil.com")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	got := rec.Header().Get("Access-Control-Allow-Origin")
-	if got == "*" {
-		t.Error("empty origin with no Origin header should NOT default to wildcard *")
-	}
-	if got != "null" {
-		t.Errorf("CORS origin = %q, want %q", got, "null")
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got == "https://evil.com" {
+		t.Error("empty allowedOrigin must NOT reflect arbitrary request origin")
 	}
 }
 
@@ -98,7 +98,7 @@ func TestCORSSecurityHeaders(t *testing.T) {
 	}
 }
 
-func TestCORSEmptyOriginDefaultsToSelf(t *testing.T) {
+func TestCORSEmptyOriginNoSecurityHeaders(t *testing.T) {
 	handler := middleware.CORS("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -107,8 +107,7 @@ func TestCORSEmptyOriginDefaultsToSelf(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	got := rec.Header().Get("Access-Control-Allow-Origin")
-	if got == "*" {
-		t.Error("empty origin should NOT default to wildcard *")
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("expected no CORS headers, got origin %q", got)
 	}
 }

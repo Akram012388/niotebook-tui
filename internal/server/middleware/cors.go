@@ -5,14 +5,13 @@ import "net/http"
 func CORS(allowedOrigin string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := allowedOrigin
-			if origin == "" {
-				origin = r.Header.Get("Origin")
-				if origin == "" {
-					origin = "null"
-				}
+			if allowedOrigin == "" {
+				// Fail secure: no CORS headers if origin not configured
+				next.ServeHTTP(w, r)
+				return
 			}
-			w.Header().Set("Access-Control-Allow-Origin", origin)
+
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
