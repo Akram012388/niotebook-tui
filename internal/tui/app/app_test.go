@@ -362,6 +362,51 @@ func TestAppModelProfileDismissReturnsToTimeline(t *testing.T) {
 	}
 }
 
+func TestAppModelComposeBlocksTimelineShortcuts(t *testing.T) {
+	trackFactory := &stubTrackFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, trackFactory)
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	// Open compose
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if !m.IsComposeOpen() {
+		t.Fatal("compose should be open")
+	}
+	// Press 'j' — should be routed to compose (not timeline)
+	m = update(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	// Compose is still open — key was handled by compose, not timeline
+	if !m.IsComposeOpen() {
+		t.Error("compose should still be open after pressing j")
+	}
+}
+
+func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
+	trackFactory := &stubTrackFactory{}
+	m := app.NewAppModelWithFactory(nil, nil, trackFactory)
+	m = update(m, app.MsgAuthSuccess{
+		User:   &models.User{Username: "akram"},
+		Tokens: &models.TokenPair{AccessToken: "tok"},
+	})
+	if m.CurrentView() != app.ViewTimeline {
+		t.Fatalf("view = %v, want ViewTimeline", m.CurrentView())
+	}
+	// Send timeline loaded message
+	m = update(m, app.MsgTimelineLoaded{
+		Posts:   []models.Post{{ID: "p1", Content: "Hello"}, {ID: "p2", Content: "World"}},
+		HasMore: true,
+	})
+	// The timeline stub should have received the update
+	tl := trackFactory.lastTimeline
+	if tl == nil {
+		t.Fatal("expected timeline stub to exist")
+	}
+	if !tl.updated {
+		t.Error("expected timeline to have received the MsgTimelineLoaded update")
+	}
+}
+
 // --- Additional stub factories for specific behaviors ---
 
 // stubCancelFactory returns a compose that cancels immediately on any key
@@ -399,3 +444,33 @@ type stubDismissProfile struct{ stubViewModel }
 
 func (s *stubDismissProfile) Editing() bool   { return false }
 func (s *stubDismissProfile) Dismissed() bool { return true }
+
+// stubTrackFactory tracks the timeline it creates for verification
+type stubTrackFactory struct {
+	stubFactory
+	lastTimeline *stubTrackTimeline
+}
+
+func (f *stubTrackFactory) NewTimeline(_ *client.Client) app.TimelineViewModel {
+	tl := &stubTrackTimeline{}
+	f.lastTimeline = tl
+	return tl
+}
+
+func (f *stubTrackFactory) NewCompose(_ *client.Client) app.ComposeViewModel {
+	return &stubCompose{}
+}
+
+// stubTrackTimeline tracks whether Update was called with MsgTimelineLoaded
+type stubTrackTimeline struct {
+	stubViewModel
+	updated bool
+}
+
+func (s *stubTrackTimeline) FetchLatest() tea.Cmd { return nil }
+func (s *stubTrackTimeline) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
+	if _, ok := msg.(app.MsgTimelineLoaded); ok {
+		s.updated = true
+	}
+	return s, nil
+}

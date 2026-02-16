@@ -105,6 +105,47 @@ func TestLoginWrongPassword(t *testing.T) {
 	}
 }
 
+func TestRegisterDuplicateEmail(t *testing.T) {
+	userStore := newMockUserStore()
+	tokenStore := newMockRefreshTokenStore()
+	auth := service.NewAuthService(userStore, tokenStore, "test-secret-32-bytes-long-xxxxx")
+
+	// Register first user
+	if _, err := auth.Register(context.Background(), &models.RegisterRequest{
+		Username: "akram", Email: "akram@example.com", Password: "password123",
+	}); err != nil {
+		t.Fatalf("first Register: %v", err)
+	}
+
+	// Register second user with same email
+	_, err := auth.Register(context.Background(), &models.RegisterRequest{
+		Username: "other", Email: "akram@example.com", Password: "password456",
+	})
+	if err == nil {
+		t.Fatal("expected error for duplicate email")
+	}
+	apiErr, ok := err.(*models.APIError)
+	if !ok {
+		t.Fatalf("expected *models.APIError, got %T", err)
+	}
+	if apiErr.Code != models.ErrCodeConflict {
+		t.Errorf("code = %q, want %q", apiErr.Code, models.ErrCodeConflict)
+	}
+}
+
+func TestLoginNonexistentEmail(t *testing.T) {
+	userStore := newMockUserStore()
+	tokenStore := newMockRefreshTokenStore()
+	auth := service.NewAuthService(userStore, tokenStore, "test-secret-32-bytes-long-xxxxx")
+
+	_, err := auth.Login(context.Background(), &models.LoginRequest{
+		Email: "nonexistent@example.com", Password: "password123",
+	})
+	if err == nil {
+		t.Fatal("expected error for nonexistent email")
+	}
+}
+
 func TestRefreshToken(t *testing.T) {
 	userStore := newMockUserStore()
 	tokenStore := newMockRefreshTokenStore()

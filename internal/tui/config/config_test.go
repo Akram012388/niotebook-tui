@@ -70,6 +70,19 @@ func TestConfigDirXDGOverride(t *testing.T) {
 	}
 }
 
+func TestLoadConfigInvalidYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte(":::invalid yaml{{{\n"), 0600); err != nil {
+		t.Fatalf("setup WriteFile: %v", err)
+	}
+
+	_, err := config.LoadFromFile(path)
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
 func TestConfigDirDefaultWithoutXDG(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "")
 	dir := config.ConfigDir()
