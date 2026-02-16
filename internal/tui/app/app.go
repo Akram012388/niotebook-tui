@@ -302,10 +302,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.discoverState.ActiveSection == components.SectionTrending {
 					if m.discoverState.TrendingCursor < components.TrendingCount()-1 {
 						m.discoverState.TrendingCursor++
+						m.adjustDiscoverScroll()
 					}
 				} else {
 					if m.discoverState.WritersCursor < components.WritersCount()-1 {
 						m.discoverState.WritersCursor++
+						m.adjustDiscoverScroll()
 					}
 				}
 				return m, nil
@@ -313,10 +315,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.discoverState.ActiveSection == components.SectionTrending {
 					if m.discoverState.TrendingCursor > 0 {
 						m.discoverState.TrendingCursor--
+						m.adjustDiscoverScroll()
 					}
 				} else {
 					if m.discoverState.WritersCursor > 0 {
 						m.discoverState.WritersCursor--
+						m.adjustDiscoverScroll()
 					}
 				}
 				return m, nil
@@ -620,6 +624,42 @@ func (m AppModel) openHelp() (AppModel, tea.Cmd) {
 		m.help = hv
 	}
 	return m, nil
+}
+
+// adjustDiscoverScroll keeps the cursor visible within the discover panel's
+// scrollable sections by adjusting the scroll offset when the cursor moves
+// outside the visible window. The visible item count mirrors the calculation
+// in discover.go's renderTrendingSection/renderWritersSection.
+func (m *AppModel) adjustDiscoverScroll() {
+	// Compute visible items per section (mirrors discover.go logic)
+	searchLines := 4
+	availableHeight := m.height - searchLines - 2
+	if availableHeight < 4 {
+		availableHeight = 4
+	}
+	halfHeight := availableHeight / 2
+	headerLines := 2
+	itemHeight := 2
+	visibleItems := (halfHeight - headerLines) / itemHeight
+	if visibleItems < 1 {
+		visibleItems = 1
+	}
+
+	if m.discoverState.ActiveSection == components.SectionTrending {
+		if m.discoverState.TrendingCursor >= m.discoverState.TrendingScroll+visibleItems {
+			m.discoverState.TrendingScroll = m.discoverState.TrendingCursor - visibleItems + 1
+		}
+		if m.discoverState.TrendingCursor < m.discoverState.TrendingScroll {
+			m.discoverState.TrendingScroll = m.discoverState.TrendingCursor
+		}
+	} else {
+		if m.discoverState.WritersCursor >= m.discoverState.WritersScroll+visibleItems {
+			m.discoverState.WritersScroll = m.discoverState.WritersCursor - visibleItems + 1
+		}
+		if m.discoverState.WritersCursor < m.discoverState.WritersScroll {
+			m.discoverState.WritersScroll = m.discoverState.WritersCursor
+		}
+	}
 }
 
 // openProfile navigates to the profile view, preserving timeline state.
