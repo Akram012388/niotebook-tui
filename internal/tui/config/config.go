@@ -38,6 +38,9 @@ func LoadFromFile(path string) (*Config, error) {
 }
 
 func ConfigDir() string {
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "niotebook")
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "niotebook")
 }

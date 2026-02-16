@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Akram012388/niotebook-tui/internal/tui/config"
@@ -55,5 +56,22 @@ func TestLoadAuthFileNotFound(t *testing.T) {
 	_, err := config.LoadAuth("/nonexistent/auth.json")
 	if err == nil {
 		t.Fatal("expected error for missing file")
+	}
+}
+
+func TestConfigDirXDGOverride(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "/tmp/test-xdg")
+	dir := config.ConfigDir()
+	want := "/tmp/test-xdg/niotebook"
+	if dir != want {
+		t.Errorf("ConfigDir() = %q, want %q", dir, want)
+	}
+}
+
+func TestConfigDirDefaultWithoutXDG(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "")
+	dir := config.ConfigDir()
+	if !strings.HasSuffix(dir, "/.config/niotebook") {
+		t.Errorf("ConfigDir() = %q, want suffix /.config/niotebook", dir)
 	}
 }
