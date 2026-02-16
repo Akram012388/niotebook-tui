@@ -39,7 +39,7 @@ var helpBindings = map[string][]HelpEntry{
 		{"q", "Quit"},
 	},
 	HelpViewCompose: {
-		{"Ctrl+E", "Publish post"},
+		{"Ctrl+Enter", "Publish post"},
 		{"Esc", "Cancel"},
 		{"?", "Close help"},
 	},

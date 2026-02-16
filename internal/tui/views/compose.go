@@ -127,7 +127,7 @@ func (m ComposeModel) handleKey(msg tea.KeyMsg) (ComposeModel, tea.Cmd) {
 		m.cancelled = true
 		return m, nil
 
-	case tea.KeyCtrlE:
+	case tea.KeyCtrlJ: // Ctrl+Enter (terminal sends Ctrl+J / LF for Ctrl+Enter)
 		content := strings.TrimSpace(m.textarea.Value())
 		charCount := len([]rune(content))
 		if charCount == 0 || charCount > maxPostLength {
@@ -204,7 +204,7 @@ func (m ComposeModel) View() string {
 	if m.posting {
 		b.WriteString(composeHintStyle.Render("Publishing..."))
 	} else {
-		b.WriteString(composeHintStyle.Render("Ctrl+E: post    Esc: cancel"))
+		b.WriteString(composeHintStyle.Render("Ctrl+Enter: post    Esc: cancel"))
 	}
 
 	if m.err != nil {
@@ -219,5 +219,5 @@ func (m ComposeModel) View() string {
 
 // HelpText returns the status bar help text for the compose modal.
 func (m ComposeModel) HelpText() string {
-	return "Ctrl+E: publish  Esc: cancel"
+	return "Ctrl+Enter: publish  Esc: cancel"
 }

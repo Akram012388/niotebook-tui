@@ -34,8 +34,8 @@ func TestComposeCtrlEnterPublishes(t *testing.T) {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
-	// Press Ctrl+E to publish
-	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	// Press Ctrl+Enter (Ctrl+J) to publish
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if !m.Submitted() {
 		t.Error("expected submitted to be true after Ctrl+Enter with content")
 	}
@@ -65,8 +65,8 @@ func TestComposeOverLimitDisablesSubmit(t *testing.T) {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
-	// Try Ctrl+Enter — should not submit
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	// Try Ctrl+Enter (Ctrl+J) — should not submit
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if m.Submitted() {
 		t.Error("expected submitted to be false when over character limit")
 	}
@@ -81,8 +81,8 @@ func TestComposeEmptyDisablesSubmit(t *testing.T) {
 	m := views.NewComposeModel(nil)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 
-	// Try Ctrl+Enter with empty content
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	// Try Ctrl+Enter (Ctrl+J) with empty content
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if m.Submitted() {
 		t.Error("expected submitted to be false when content is empty")
 	}
@@ -96,7 +96,7 @@ func TestComposePublishReturnsPostMessage(t *testing.T) {
 		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	if cmd == nil {
 		t.Fatal("expected cmd from publish")
 	}
