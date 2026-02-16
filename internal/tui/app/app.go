@@ -676,23 +676,6 @@ func (m AppModel) viewCurrentContent() string {
 	return ""
 }
 
-// viewName returns a display name for the current view.
-func (m AppModel) viewName() string {
-	if m.compose != nil {
-		return "Compose"
-	}
-	if m.help != nil {
-		return "Help"
-	}
-	switch m.currentView {
-	case ViewTimeline:
-		return "Timeline"
-	case ViewProfile:
-		return "Profile"
-	default:
-		return ""
-	}
-}
 
 // currentHelpText returns the status bar help text for the active view/overlay.
 func (m AppModel) currentHelpText() string {
