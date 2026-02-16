@@ -23,7 +23,7 @@ func TestFactoryNewLogin(t *testing.T) {
 	}
 	_ = vm.View()
 	_ = vm.HelpText()
-	vm, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 }
 
 func TestFactoryNewRegister(t *testing.T) {
@@ -34,7 +34,7 @@ func TestFactoryNewRegister(t *testing.T) {
 	}
 	_ = vm.View()
 	_ = vm.HelpText()
-	vm, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	_, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 }
 
 func TestFactoryNewTimeline(t *testing.T) {
@@ -79,9 +79,7 @@ func TestFactoryNewCompose(t *testing.T) {
 	if vm.Cancelled() {
 		t.Error("new compose should not be cancelled")
 	}
-	if !vm.IsTextInputFocused() {
-		// Compose starts with text input focused
-	}
+	_ = vm.IsTextInputFocused()
 	_, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 }
 

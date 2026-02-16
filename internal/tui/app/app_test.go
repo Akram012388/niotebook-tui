@@ -393,7 +393,7 @@ func TestAppModelTimelineLoadedSetsPostsInView(t *testing.T) {
 		t.Fatalf("view = %v, want ViewTimeline", m.CurrentView())
 	}
 	// Send timeline loaded message
-	m = update(m, app.MsgTimelineLoaded{
+	_ = update(m, app.MsgTimelineLoaded{
 		Posts:   []models.Post{{ID: "p1", Content: "Hello"}, {ID: "p2", Content: "World"}},
 		HasMore: true,
 	})
