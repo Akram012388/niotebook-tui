@@ -65,6 +65,30 @@ func TestValidatePostContent(t *testing.T) {
 	}
 }
 
+func TestValidatePostContentControlChars(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		wantErr bool
+	}{
+		{"null byte", "hello\x00world", true},
+		{"bell char", "hello\x07world", true},
+		{"escape char", "hello\x1bworld", true},
+		{"newline allowed", "hello\nworld", false},
+		{"carriage return allowed", "hello\rworld", false},
+		{"tab allowed", "hello\tworld", false},
+		{"normal text", "hello world!", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := service.ValidatePostContent(tt.content)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePostContent(%q) error = %v, wantErr %v", tt.content, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateEmail(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -67,6 +67,13 @@ func ValidatePostContent(content string) error {
 			Message: "Post must be 140 characters or fewer",
 		}
 	}
+	if containsControlChars(trimmed, true) {
+		return &models.APIError{
+			Code:    models.ErrCodeValidation,
+			Field:   "content",
+			Message: "post content contains invalid characters",
+		}
+	}
 	return nil
 }
 
