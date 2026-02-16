@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -63,7 +64,7 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 
 			if err != nil || !token.Valid {
 				code := models.ErrCodeUnauthorized
-				if strings.Contains(err.Error(), "expired") {
+				if err != nil && errors.Is(err, jwt.ErrTokenExpired) {
 					code = models.ErrCodeTokenExpired
 				}
 				writeError(w, http.StatusUnauthorized, code, "Invalid or expired token")
