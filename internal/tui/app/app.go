@@ -424,13 +424,8 @@ func (m AppModel) View() string {
 		contentHeight,
 	)
 
-	// Right sidebar
-	rightContent := components.RenderShortcuts(
-		components.View(m.currentView),
-		m.compose != nil,
-		cols.Right,
-		contentHeight,
-	)
+	// Right sidebar — placeholder until discover component is added
+	rightContent := ""
 
 	return layout.RenderColumns(m.width, m.height, leftContent, centerContent, rightContent)
 }
