@@ -46,6 +46,10 @@ func main() {
 		slog.Error("NIOTEBOOK_JWT_SECRET is required")
 		os.Exit(1)
 	}
+	if len(jwtSecret) < 32 {
+		slog.Error("NIOTEBOOK_JWT_SECRET must be at least 32 bytes", "length", len(jwtSecret))
+		os.Exit(1)
+	}
 
 	// Database
 	ctx := context.Background()
