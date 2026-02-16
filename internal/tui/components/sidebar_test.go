@@ -9,59 +9,79 @@ import (
 	"github.com/Akram012388/niotebook-tui/internal/tui/components"
 )
 
-func TestSidebarRendersUsername(t *testing.T) {
-	user := &models.User{
-		ID:        "123",
-		Username:  "akram",
-		CreatedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
-	}
-	result := components.RenderSidebar(user, components.ViewTimeline, 30, 20)
-	if !strings.Contains(result, "akram") {
-		t.Error("expected username 'akram' in sidebar output")
+func TestSidebarShowsLogo(t *testing.T) {
+	user := &models.User{Username: "akram", DisplayName: "Akram"}
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	if !strings.Contains(result, "otebook") {
+		t.Error("sidebar should contain the niotebook logo")
 	}
 }
 
-func TestSidebarRendersNavItems(t *testing.T) {
-	user := &models.User{
-		ID:        "123",
-		Username:  "testuser",
-		CreatedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
-	}
-	result := components.RenderSidebar(user, components.ViewTimeline, 30, 20)
+func TestSidebarShowsNavItems(t *testing.T) {
+	user := &models.User{Username: "akram"}
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
 	if !strings.Contains(result, "Home") {
-		t.Error("expected 'Home' nav item in sidebar output")
+		t.Error("sidebar should contain Home nav item")
 	}
 	if !strings.Contains(result, "Profile") {
-		t.Error("expected 'Profile' nav item in sidebar output")
+		t.Error("sidebar should contain Profile nav item")
+	}
+	if !strings.Contains(result, "Bookmarks") {
+		t.Error("sidebar should contain Bookmarks placeholder")
+	}
+	if !strings.Contains(result, "Settings") {
+		t.Error("sidebar should contain Settings placeholder")
 	}
 }
 
-func TestSidebarActiveIndicator(t *testing.T) {
+func TestSidebarShowsPostButton(t *testing.T) {
+	user := &models.User{Username: "akram"}
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	if !strings.Contains(result, "Post") {
+		t.Error("sidebar should contain Post button")
+	}
+}
+
+func TestSidebarShowsShortcuts(t *testing.T) {
+	user := &models.User{Username: "akram"}
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	if !strings.Contains(result, "j/k") {
+		t.Error("sidebar should contain j/k shortcut")
+	}
+	if !strings.Contains(result, "Tab") {
+		t.Error("sidebar should contain Tab shortcut")
+	}
+}
+
+func TestSidebarShowsJoinDate(t *testing.T) {
 	user := &models.User{
-		ID:        "123",
-		Username:  "testuser",
-		CreatedAt: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		Username:  "akram",
+		CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
-	result := components.RenderSidebar(user, components.ViewTimeline, 30, 20)
-	if !strings.Contains(result, "●") {
-		t.Error("expected active indicator '●' when viewing timeline")
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	if !strings.Contains(result, "Joined Feb 2026") {
+		t.Error("sidebar should contain join date")
 	}
 }
 
-func TestSidebarLoggedOut(t *testing.T) {
-	result := components.RenderSidebar(nil, components.ViewLogin, 30, 20)
-	if strings.Contains(result, "@") {
-		t.Error("expected no '@' prefix when logged out (nil user)")
+func TestSidebarActiveHighlight(t *testing.T) {
+	user := &models.User{Username: "akram"}
+	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	if !strings.Contains(result, "●") {
+		t.Error("sidebar should show ● marker for active nav item")
 	}
 }
 
 func TestSidebarZeroWidth(t *testing.T) {
-	user := &models.User{
-		ID:       "123",
-		Username: "testuser",
-	}
-	result := components.RenderSidebar(user, components.ViewTimeline, 0, 20)
+	result := components.RenderSidebar(nil, components.ViewTimeline, false, 0, 20)
 	if result != "" {
-		t.Errorf("expected empty string for zero width, got %q", result)
+		t.Errorf("expected empty string for zero width, got len=%d", len(result))
+	}
+}
+
+func TestSidebarNilUser(t *testing.T) {
+	result := components.RenderSidebar(nil, components.ViewTimeline, false, 24, 30)
+	if result == "" {
+		t.Error("sidebar with nil user should still render logo")
 	}
 }

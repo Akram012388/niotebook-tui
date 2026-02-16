@@ -34,7 +34,9 @@ type ComposeViewModel interface {
 	ViewModel
 	Submitted() bool
 	Cancelled() bool
+	Expanded() bool
 	IsTextInputFocused() bool
+	Expand()
 }
 
 // HelpViewModel is the interface for the help overlay.
@@ -420,12 +422,17 @@ func (m AppModel) View() string {
 	leftContent := components.RenderSidebar(
 		m.user,
 		components.View(m.currentView),
+		false,
 		cols.Left,
 		contentHeight,
 	)
 
-	// Right sidebar — placeholder until discover component is added
-	rightContent := ""
+	// Right sidebar — discover / trending panel
+	rightContent := components.RenderDiscover(
+		false,
+		cols.Right,
+		contentHeight,
+	)
 
 	return layout.RenderColumns(m.width, m.height, leftContent, centerContent, rightContent)
 }
