@@ -1,0 +1,44 @@
+{
+  "sprint": "grade-a-followup",
+  "plan": "docs/plans/2026-02-16-grade-a-followup-sprint.md",
+  "branch": "grade-a-sprint",
+  "total_tasks": 5,
+  "started": "2026-02-16T09:34:12Z",
+  "tasks": {
+    "1": {
+      "status": "running",
+      "attempts": 1,
+      "started": "2026-02-16T09:34:12Z",
+      "finished": null,
+      "error": null
+    },
+    "2": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "3": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "4": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    },
+    "5": {
+      "status": "pending",
+      "attempts": 0,
+      "started": null,
+      "finished": null,
+      "error": null
+    }
+  }
+}
