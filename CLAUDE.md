@@ -110,7 +110,9 @@ Required for server:
 - `NIOTEBOOK_DB_URL` - PostgreSQL connection string
 - `NIOTEBOOK_JWT_SECRET` - JWT signing key (min 32 bytes)
 
-Optional: `NIOTEBOOK_PORT`, `NIOTEBOOK_HOST`, `NIOTEBOOK_LOG_LEVEL`, `NIOTEBOOK_ACCESS_TOKEN_TTL`, `NIOTEBOOK_REFRESH_TOKEN_TTL`
+Optional: `NIOTEBOOK_PORT`, `NIOTEBOOK_HOST`, `NIOTEBOOK_LOG_LEVEL`, `NIOTEBOOK_CORS_ORIGIN`
+
+For testing: `NIOTEBOOK_TEST_DB_URL` - PostgreSQL connection string for test database
 
 ## Go Module
 

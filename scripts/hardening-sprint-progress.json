@@ -81,10 +81,10 @@
       "error": null
     },
     "12": {
-      "status": "running",
+      "status": "completed",
       "attempts": 1,
       "started": "2026-02-16T06:29:55Z",
-      "finished": null,
+      "finished": "2026-02-16T06:37:12Z",
       "error": null
     }
   }
