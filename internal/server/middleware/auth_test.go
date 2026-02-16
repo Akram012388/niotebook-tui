@@ -101,3 +101,25 @@ func TestAuthMiddlewareExemptPaths(t *testing.T) {
 		}
 	}
 }
+
+func TestAuthMiddlewareMalformedClaims(t *testing.T) {
+	// Token with integer sub instead of string — valid signature, bad claims
+	token := makeToken(testSecret, jwt.MapClaims{
+		"sub": 12345,
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+	})
+
+	handler := middleware.Auth(testSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called for malformed claims")
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}

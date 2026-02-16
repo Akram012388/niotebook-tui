@@ -76,9 +76,21 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Safe type assertions — return 401 instead of panicking
+			sub, ok := claims["sub"].(string)
+			if !ok || sub == "" {
+				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "invalid token claims")
+				return
+			}
+			uname, ok := claims["username"].(string)
+			if !ok {
+				writeError(w, http.StatusUnauthorized, models.ErrCodeUnauthorized, "invalid token claims")
+				return
+			}
+
 			userClaims := &UserClaims{
-				UserID:   claims["sub"].(string),
-				Username: claims["username"].(string),
+				UserID:   sub,
+				Username: uname,
 			}
 
 			ctx := context.WithValue(r.Context(), userCtxKey, userClaims)
