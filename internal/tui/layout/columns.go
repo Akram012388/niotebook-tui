@@ -102,33 +102,58 @@ func verticalDivider(height int) string {
 	return strings.Join(lines, "\n")
 }
 
+// headerBar returns a horizontal line spanning the given width.
+// Active columns get a thick amber bar (━), inactive get a thin dim line (─).
+func headerBar(width int, active bool) string {
+	if width <= 0 {
+		return ""
+	}
+	if active {
+		return lipgloss.NewStyle().Foreground(theme.Accent).Render(strings.Repeat("━", width))
+	}
+	return lipgloss.NewStyle().Foreground(theme.Border).Render(strings.Repeat("─", width))
+}
+
 // RenderColumns renders a three-column layout for the given terminal
-// dimensions. Each content string is constrained to its column width and the
-// specified height. Vertical dividers in the theme's Border color separate
-// adjacent columns.
-func RenderColumns(width, height int, leftContent, centerContent, rightContent string) string {
+// dimensions. Each column gets a header bar: thick amber for the focused
+// column, thin dim for inactive. Vertical dividers separate columns.
+func RenderColumns(width, height int, focus FocusColumn, leftContent, centerContent, rightContent string) string {
 	cols := ComputeColumns(width)
 
+	// Reserve 1 line for header bar
+	contentHeight := height - 1
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+
 	colStyle := func(w int) lipgloss.Style {
-		return lipgloss.NewStyle().Width(w).Height(height)
+		return lipgloss.NewStyle().Width(w).Height(contentHeight)
 	}
 
 	switch cols.Mode {
 	case ThreeColumn:
-		left := colStyle(cols.Left).Render(leftContent)
-		center := colStyle(cols.Center).Render(centerContent)
-		right := colStyle(cols.Right).Render(rightContent)
+		leftHeader := headerBar(cols.Left, focus == FocusLeft)
+		centerHeader := headerBar(cols.Center, focus == FocusCenter)
+		rightHeader := headerBar(cols.Right, focus == FocusRight)
+
+		left := leftHeader + "\n" + colStyle(cols.Left).Render(leftContent)
+		center := centerHeader + "\n" + colStyle(cols.Center).Render(centerContent)
+		right := rightHeader + "\n" + colStyle(cols.Right).Render(rightContent)
 		div := verticalDivider(height)
 		return lipgloss.JoinHorizontal(lipgloss.Top, left, div, center, div, right)
 
 	case TwoColumn:
-		left := colStyle(cols.Left).Render(leftContent)
-		center := colStyle(cols.Center).Render(centerContent)
+		leftHeader := headerBar(cols.Left, focus == FocusLeft)
+		centerHeader := headerBar(cols.Center, focus == FocusCenter)
+
+		left := leftHeader + "\n" + colStyle(cols.Left).Render(leftContent)
+		center := centerHeader + "\n" + colStyle(cols.Center).Render(centerContent)
 		div := verticalDivider(height)
 		return lipgloss.JoinHorizontal(lipgloss.Top, left, div, center)
 
 	default:
-		return colStyle(cols.Center).Render(centerContent)
+		centerHeader := headerBar(cols.Center, true)
+		return centerHeader + "\n" + colStyle(cols.Center).Render(centerContent)
 	}
 }
 

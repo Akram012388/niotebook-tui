@@ -486,7 +486,7 @@ func (m AppModel) View() string {
 		contentHeight,
 	)
 
-	return layout.RenderColumns(m.width, m.height, leftContent, centerContent, rightContent)
+	return layout.RenderColumns(m.width, m.height, m.focus.Active(), leftContent, centerContent, rightContent)
 }
 
 // handleAuthSuccess transitions from login/register to the timeline.

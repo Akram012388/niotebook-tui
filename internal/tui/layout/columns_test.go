@@ -125,21 +125,21 @@ func TestComputeColumnsWidthSumsCorrectly(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRenderColumnsThreeColumn(t *testing.T) {
-	result := RenderColumns(120, 10, "left", "center", "right")
+	result := RenderColumns(120, 10, FocusCenter, "left", "center", "right")
 	if result == "" {
 		t.Error("RenderColumns(120, 10, ...) returned empty string")
 	}
 }
 
 func TestRenderColumnsTwoColumn(t *testing.T) {
-	result := RenderColumns(90, 10, "left", "center", "right")
+	result := RenderColumns(90, 10, FocusCenter, "left", "center", "right")
 	if result == "" {
 		t.Error("RenderColumns(90, 10, ...) returned empty string")
 	}
 }
 
 func TestRenderColumnsSingleColumn(t *testing.T) {
-	result := RenderColumns(60, 10, "left", "center", "right")
+	result := RenderColumns(60, 10, FocusCenter, "left", "center", "right")
 	if result == "" {
 		t.Error("RenderColumns(60, 10, ...) returned empty string")
 	}
@@ -147,13 +147,13 @@ func TestRenderColumnsSingleColumn(t *testing.T) {
 
 func TestRenderColumnsZeroHeight(t *testing.T) {
 	// Should not panic with zero height.
-	result := RenderColumns(120, 0, "left", "center", "right")
+	result := RenderColumns(120, 0, FocusCenter, "left", "center", "right")
 	_ = result // just ensure no panic
 }
 
 func TestRenderColumnsEmptyContent(t *testing.T) {
 	// Should not panic with empty content strings.
-	result := RenderColumns(120, 5, "", "", "")
+	result := RenderColumns(120, 5, FocusCenter, "", "", "")
 	if result == "" {
 		t.Error("RenderColumns with empty content returned empty string")
 	}
