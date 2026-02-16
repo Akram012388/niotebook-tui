@@ -6,16 +6,16 @@
   "started": "2026-02-16T09:34:12Z",
   "tasks": {
     "1": {
-      "status": "running",
+      "status": "completed",
       "attempts": 2,
       "started": "2026-02-16T09:40:55Z",
-      "finished": null,
+      "finished": "2026-02-16T09:44:46Z",
       "error": null
     },
     "2": {
-      "status": "pending",
-      "attempts": 0,
-      "started": null,
+      "status": "running",
+      "attempts": 1,
+      "started": "2026-02-16T09:44:46Z",
       "finished": null,
       "error": null
     },
