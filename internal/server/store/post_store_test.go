@@ -117,9 +117,9 @@ func TestGetTimeline(t *testing.T) {
 	userID := createTestUser(t, us, "akram", "akram@example.com")
 
 	_, _ = ps.CreatePost(ctx, userID, "First post")
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	_, _ = ps.CreatePost(ctx, userID, "Second post")
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	_, _ = ps.CreatePost(ctx, userID, "Third post")
 
 	posts, err := ps.GetTimeline(ctx, time.Now(), 50)
@@ -148,7 +148,7 @@ func TestGetTimelineCursorPagination(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		_, _ = ps.CreatePost(ctx, userID, "Post "+string(rune('A'+i)))
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	// Fetch first page
