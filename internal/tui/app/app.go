@@ -121,7 +121,8 @@ type AppModel struct {
 	// Overlays
 	help HelpViewModel
 
-	// Interactive state for discover panel (right column)
+	// Interactive state for sidebar and discover panels
+	sidebarState  components.SidebarState
 	discoverState components.DiscoverState
 }
 
@@ -260,6 +261,37 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.currentView == ViewTimeline && m.user != nil {
 					return m.openProfile(m.user.ID, true)
 				}
+			}
+		}
+
+		// Route j/k/Enter to sidebar when left column is focused
+		if m.focus.Active() == layout.FocusLeft && !m.isTextInputFocused() {
+			switch {
+			case msg.Type == tea.KeyDown || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'j'):
+				if m.sidebarState.NavCursor < components.NavItemCount-1 {
+					m.sidebarState.NavCursor++
+				}
+				return m, nil
+			case msg.Type == tea.KeyUp || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'k'):
+				if m.sidebarState.NavCursor > 0 {
+					m.sidebarState.NavCursor--
+				}
+				return m, nil
+			case msg.Type == tea.KeyEnter:
+				switch m.sidebarState.NavCursor {
+				case 0: // Home
+					if m.currentView != ViewTimeline {
+						m.currentView = ViewTimeline
+						if m.timeline != nil {
+							return m, m.timeline.FetchLatest()
+						}
+					}
+				case 1: // Profile
+					if m.user != nil {
+						return m.openProfile(m.user.ID, true)
+					}
+				}
+				return m, nil
 			}
 		}
 
@@ -514,6 +546,7 @@ func (m AppModel) View() string {
 		m.user,
 		components.View(m.currentView),
 		m.focus.Active() == layout.FocusLeft,
+		&m.sidebarState,
 		cols.Left,
 		contentHeight,
 	)

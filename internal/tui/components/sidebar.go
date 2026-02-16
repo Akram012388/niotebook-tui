@@ -1,12 +1,10 @@
 package components
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/Akram012388/niotebook-tui/internal/build"
 	"github.com/Akram012388/niotebook-tui/internal/models"
 	"github.com/Akram012388/niotebook-tui/internal/tui/theme"
 )
@@ -24,110 +22,129 @@ const (
 	ViewProfile              // 4
 )
 
-// shortcut is a key-description pair for the shortcuts reference section.
+// SidebarState holds interactive state for the left column when focused.
+type SidebarState struct {
+	NavCursor int // which nav item is highlighted (0=Home, 1=Profile, 2=Bookmarks, 3=Settings)
+}
+
+// NavItemCount is the number of navigable items.
+const NavItemCount = 4
+
+type navItem struct {
+	label       string
+	placeholder bool
+}
+
+var navItems = []navItem{
+	{label: "Home", placeholder: false},
+	{label: "Profile", placeholder: false},
+	{label: "Bookmarks", placeholder: true},
+	{label: "Settings", placeholder: true},
+}
+
 type shortcut struct {
 	key  string
 	desc string
 }
 
-// shortcuts lists the keyboard shortcuts shown at the bottom of the sidebar.
 var shortcuts = []shortcut{
 	{"j/k", "scroll"},
+	{"g/G", "top/bottom"},
 	{"Tab", "switch col"},
 	{"n", "compose"},
 	{"?", "help"},
 	{"q", "quit"},
 }
 
-// RenderSidebar renders the left sidebar with profile info, navigation, post
-// button, version, join date, and keyboard shortcuts. When user is nil (logged
-// out), only the logo is shown. When width is 0 an empty string is returned.
-// The focused parameter is accepted for future use (border color changes).
-func RenderSidebar(user *models.User, activeView View, focused bool, width, height int) string {
+// RenderSidebar renders the left sidebar with ASCII logo, nav, user card,
+// and shortcuts pushed to the bottom.
+func RenderSidebar(user *models.User, activeView View, focused bool, sidebarState *SidebarState, width, height int) string {
 	if width == 0 {
 		return ""
 	}
 
-	innerWidth := width - 2 // account for padding
+	innerWidth := width - 2
 	if innerWidth < 0 {
 		innerWidth = 0
 	}
 
-	var sections []string
+	var topSections []string
+	var bottomSections []string
 
-	// Brand logo
-	sections = append(sections, theme.LogoCompact())
-
-	// Separator below logo
-	sections = append(sections, theme.Separator(innerWidth))
+	// === TOP: ASCII Logo ===
+	topSections = append(topSections, theme.LogoASCII(innerWidth))
+	topSections = append(topSections, "")
 
 	if user != nil {
-		// Blank line
-		sections = append(sections, "")
+		// === Nav items ===
+		for i, item := range navItems {
+			isActive := (item.label == "Home" && activeView == ViewTimeline) ||
+				(item.label == "Profile" && activeView == ViewProfile)
+			isCursor := focused && sidebarState != nil && sidebarState.NavCursor == i
 
-		// Username with @ prefix
-		usernameStyle := lipgloss.NewStyle().Foreground(theme.Accent)
-		sections = append(sections, usernameStyle.Render("@"+user.Username))
-
-		// Display name (if not empty)
-		if user.DisplayName != "" {
-			displayStyle := lipgloss.NewStyle().Foreground(theme.Text)
-			sections = append(sections, displayStyle.Render(user.DisplayName))
+			if item.placeholder {
+				topSections = append(topSections, renderNavItemPlaceholder(item.label))
+			} else if isCursor {
+				style := lipgloss.NewStyle().Bold(true).Foreground(theme.Accent).Reverse(true)
+				topSections = append(topSections, style.Render(" "+item.label+" "))
+			} else if isActive {
+				topSections = append(topSections, renderNavItem(item.label, true))
+			} else {
+				topSections = append(topSections, renderNavItem(item.label, false))
+			}
 		}
 
-		// Blank line
-		sections = append(sections, "")
+		topSections = append(topSections, "")
 
-		// Navigation items
-		sections = append(sections, renderNavItem("Home", activeView == ViewTimeline))
-		sections = append(sections, renderNavItem("Profile", activeView == ViewProfile))
-		sections = append(sections, renderNavItemPlaceholder("Bookmarks"))
-		sections = append(sections, renderNavItemPlaceholder("Settings"))
+		// === User card ===
+		topSections = append(topSections, theme.Separator(innerWidth))
 
-		// Blank line
-		sections = append(sections, "")
+		usernameStyle := lipgloss.NewStyle().Foreground(theme.Accent)
+		topSections = append(topSections, usernameStyle.Render("@"+user.Username))
 
-		// Post button
-		postBtn := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(theme.AccentDim).
-			Foreground(theme.Accent).
-			Bold(true).
-			Align(lipgloss.Center).
-			Width(innerWidth)
-		sections = append(sections, postBtn.Render("Post"))
+		if user.DisplayName != "" {
+			displayStyle := lipgloss.NewStyle().Foreground(theme.Text)
+			topSections = append(topSections, displayStyle.Render(user.DisplayName))
+		}
 
-		// Blank line
-		sections = append(sections, "")
-
-		// Separator
-		sections = append(sections, theme.Separator(innerWidth))
-
-		// Version
-		versionStyle := lipgloss.NewStyle().Foreground(theme.TextMuted)
-		sections = append(sections, versionStyle.Render("v"+build.Version))
-
-		// Join date
 		if !user.CreatedAt.IsZero() {
 			captionStyle := lipgloss.NewStyle().Foreground(theme.TextSecondary)
 			joinDate := user.CreatedAt.Format("Joined Jan 2006")
-			sections = append(sections, captionStyle.Render(joinDate))
+			topSections = append(topSections, captionStyle.Render(joinDate))
 		}
 
-		// Blank line
-		sections = append(sections, "")
+		topSections = append(topSections, theme.Separator(innerWidth))
 
-		// Shortcuts header
-		shortcutsHeader := lipgloss.NewStyle().Foreground(theme.TextSecondary).Bold(true)
-		sections = append(sections, shortcutsHeader.Render("Shortcuts"))
+		statsStyle := lipgloss.NewStyle().Foreground(theme.TextMuted)
+		topSections = append(topSections, statsStyle.Render("0 niotes · 0 following"))
 
-		// Shortcut key-desc pairs
+		// === BOTTOM: Shortcuts (pushed to bottom) ===
 		for _, s := range shortcuts {
-			sections = append(sections, renderShortcut(s.key, s.desc))
+			bottomSections = append(bottomSections, renderShortcut(s.key, s.desc))
 		}
 	}
 
-	content := strings.Join(sections, "\n")
+	topContent := strings.Join(topSections, "\n")
+	bottomContent := strings.Join(bottomSections, "\n")
+
+	topLines := strings.Count(topContent, "\n") + 1
+	bottomLines := 0
+	if bottomContent != "" {
+		bottomLines = strings.Count(bottomContent, "\n") + 1
+	}
+	padding := 2 // wrapper padding (top + bottom)
+
+	gap := height - topLines - bottomLines - padding
+	if gap < 1 {
+		gap = 1
+	}
+
+	var content string
+	if bottomContent != "" {
+		content = topContent + strings.Repeat("\n", gap) + bottomContent
+	} else {
+		content = topContent
+	}
 
 	wrapper := lipgloss.NewStyle().
 		Width(width).
@@ -137,32 +154,31 @@ func RenderSidebar(user *models.User, activeView View, focused bool, width, heig
 	return wrapper.Render(content)
 }
 
-// renderNavItem renders a single navigation item with an active indicator.
 func renderNavItem(label string, active bool) string {
 	if active {
-		style := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(theme.Accent)
+		style := lipgloss.NewStyle().Bold(true).Foreground(theme.Accent)
 		return style.Render("● " + label)
 	}
-
-	style := lipgloss.NewStyle().
-		Foreground(theme.TextSecondary)
+	style := lipgloss.NewStyle().Foreground(theme.TextSecondary)
 	return style.Render("  " + label)
 }
 
-// renderNavItemPlaceholder renders a greyed-out nav item in TextMuted to
-// indicate a feature that is not yet available.
 func renderNavItemPlaceholder(label string) string {
-	style := lipgloss.NewStyle().
-		Foreground(theme.TextMuted)
+	style := lipgloss.NewStyle().Foreground(theme.TextMuted)
 	return style.Render("  " + label)
 }
 
-// renderShortcut renders a single shortcut line with key in Accent and
-// description in TextMuted.
 func renderShortcut(key, desc string) string {
 	keyStyle := lipgloss.NewStyle().Foreground(theme.Accent).Bold(true)
 	descStyle := lipgloss.NewStyle().Foreground(theme.TextMuted)
-	return fmt.Sprintf("%-6s %s", keyStyle.Render(key), descStyle.Render(desc))
+	// Pad the key visually to align descriptions.
+	// lipgloss.Width measures visual width (excluding ANSI codes).
+	renderedKey := keyStyle.Render(key)
+	keyWidth := lipgloss.Width(renderedKey)
+	padWidth := 5 // fixed column width for keys
+	pad := ""
+	if keyWidth < padWidth {
+		pad = strings.Repeat(" ", padWidth-keyWidth)
+	}
+	return renderedKey + pad + " " + descStyle.Render(desc)
 }

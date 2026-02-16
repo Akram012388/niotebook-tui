@@ -11,7 +11,7 @@ import (
 
 func TestSidebarShowsLogo(t *testing.T) {
 	user := &models.User{Username: "akram", DisplayName: "Akram"}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(user, components.ViewTimeline, false, nil, 24, 30)
 	if !strings.Contains(result, "otebook") {
 		t.Error("sidebar should contain the niotebook logo")
 	}
@@ -19,7 +19,7 @@ func TestSidebarShowsLogo(t *testing.T) {
 
 func TestSidebarShowsNavItems(t *testing.T) {
 	user := &models.User{Username: "akram"}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(user, components.ViewTimeline, false, nil, 24, 30)
 	if !strings.Contains(result, "Home") {
 		t.Error("sidebar should contain Home nav item")
 	}
@@ -34,17 +34,9 @@ func TestSidebarShowsNavItems(t *testing.T) {
 	}
 }
 
-func TestSidebarShowsPostButton(t *testing.T) {
-	user := &models.User{Username: "akram"}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
-	if !strings.Contains(result, "Post") {
-		t.Error("sidebar should contain Post button")
-	}
-}
-
 func TestSidebarShowsShortcuts(t *testing.T) {
 	user := &models.User{Username: "akram"}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(user, components.ViewTimeline, false, nil, 24, 30)
 	if !strings.Contains(result, "j/k") {
 		t.Error("sidebar should contain j/k shortcut")
 	}
@@ -58,7 +50,7 @@ func TestSidebarShowsJoinDate(t *testing.T) {
 		Username:  "akram",
 		CreatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(user, components.ViewTimeline, false, nil, 24, 30)
 	if !strings.Contains(result, "Joined Feb 2026") {
 		t.Error("sidebar should contain join date")
 	}
@@ -66,22 +58,31 @@ func TestSidebarShowsJoinDate(t *testing.T) {
 
 func TestSidebarActiveHighlight(t *testing.T) {
 	user := &models.User{Username: "akram"}
-	result := components.RenderSidebar(user, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(user, components.ViewTimeline, false, nil, 24, 30)
 	if !strings.Contains(result, "●") {
 		t.Error("sidebar should show ● marker for active nav item")
 	}
 }
 
 func TestSidebarZeroWidth(t *testing.T) {
-	result := components.RenderSidebar(nil, components.ViewTimeline, false, 0, 20)
+	result := components.RenderSidebar(nil, components.ViewTimeline, false, nil, 0, 20)
 	if result != "" {
 		t.Errorf("expected empty string for zero width, got len=%d", len(result))
 	}
 }
 
 func TestSidebarNilUser(t *testing.T) {
-	result := components.RenderSidebar(nil, components.ViewTimeline, false, 24, 30)
+	result := components.RenderSidebar(nil, components.ViewTimeline, false, nil, 24, 30)
 	if result == "" {
 		t.Error("sidebar with nil user should still render logo")
+	}
+}
+
+func TestSidebarFocusedCursor(t *testing.T) {
+	user := &models.User{Username: "akram"}
+	state := &components.SidebarState{NavCursor: 1}
+	result := components.RenderSidebar(user, components.ViewTimeline, true, state, 24, 30)
+	if !strings.Contains(result, "Profile") {
+		t.Error("sidebar should show Profile nav item when cursor is on it")
 	}
 }
