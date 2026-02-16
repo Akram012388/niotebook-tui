@@ -120,6 +120,9 @@ type AppModel struct {
 
 	// Overlays
 	help HelpViewModel
+
+	// Interactive state for discover panel (right column)
+	discoverState components.DiscoverState
 }
 
 // NewAppModel creates the root app model. If storedAuth has a token, the model
@@ -257,6 +260,42 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.currentView == ViewTimeline && m.user != nil {
 					return m.openProfile(m.user.ID, true)
 				}
+			}
+		}
+
+		// Route j/k/Enter to discover panel when right column is focused
+		if m.focus.Active() == layout.FocusRight && !m.isTextInputFocused() {
+			switch {
+			case msg.Type == tea.KeyDown || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'j'):
+				if m.discoverState.ActiveSection == components.SectionTrending {
+					if m.discoverState.TrendingCursor < components.TrendingCount()-1 {
+						m.discoverState.TrendingCursor++
+					}
+				} else {
+					if m.discoverState.WritersCursor < components.WritersCount()-1 {
+						m.discoverState.WritersCursor++
+					}
+				}
+				return m, nil
+			case msg.Type == tea.KeyUp || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'k'):
+				if m.discoverState.ActiveSection == components.SectionTrending {
+					if m.discoverState.TrendingCursor > 0 {
+						m.discoverState.TrendingCursor--
+					}
+				} else {
+					if m.discoverState.WritersCursor > 0 {
+						m.discoverState.WritersCursor--
+					}
+				}
+				return m, nil
+			case msg.Type == tea.KeyEnter:
+				// Toggle between Trending and Writers sections
+				if m.discoverState.ActiveSection == components.SectionTrending {
+					m.discoverState.ActiveSection = components.SectionWriters
+				} else {
+					m.discoverState.ActiveSection = components.SectionTrending
+				}
+				return m, nil
 			}
 		}
 
@@ -482,6 +521,7 @@ func (m AppModel) View() string {
 	// Right sidebar — discover / trending panel
 	rightContent := components.RenderDiscover(
 		m.focus.Active() == layout.FocusRight,
+		&m.discoverState,
 		cols.Right,
 		contentHeight,
 	)
