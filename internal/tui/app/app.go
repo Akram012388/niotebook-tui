@@ -489,42 +489,56 @@ func (m AppModel) updateCurrentView(msg tea.Msg) (AppModel, tea.Cmd) {
 
 // propagateWindowSize sends the window size to all sub-models.
 func (m AppModel) propagateWindowSize(msg tea.WindowSizeMsg) (AppModel, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	if m.login != nil {
-		m.login, _ = m.login.Update(msg)
+		var cmd tea.Cmd
+		m.login, cmd = m.login.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 	if m.register != nil {
-		m.register, _ = m.register.Update(msg)
+		var cmd tea.Cmd
+		m.register, cmd = m.register.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 	if m.timeline != nil {
 		var updated ViewModel
-		updated, _ = m.timeline.Update(msg)
+		var cmd tea.Cmd
+		updated, cmd = m.timeline.Update(msg)
 		if tl, ok := updated.(TimelineViewModel); ok {
 			m.timeline = tl
 		}
+		cmds = append(cmds, cmd)
 	}
 	if m.profile != nil {
 		var updated ViewModel
-		updated, _ = m.profile.Update(msg)
+		var cmd tea.Cmd
+		updated, cmd = m.profile.Update(msg)
 		if pv, ok := updated.(ProfileViewModel); ok {
 			m.profile = pv
 		}
+		cmds = append(cmds, cmd)
 	}
 	if m.compose != nil {
 		var updated ViewModel
-		updated, _ = m.compose.Update(msg)
+		var cmd tea.Cmd
+		updated, cmd = m.compose.Update(msg)
 		if cv, ok := updated.(ComposeViewModel); ok {
 			m.compose = cv
 		}
+		cmds = append(cmds, cmd)
 	}
 	if m.help != nil {
 		var updated ViewModel
-		updated, _ = m.help.Update(msg)
+		var cmd tea.Cmd
+		updated, cmd = m.help.Update(msg)
 		if hv, ok := updated.(HelpViewModel); ok {
 			m.help = hv
 		}
+		cmds = append(cmds, cmd)
 	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 // viewCurrentContent returns the rendered content for the active view.
