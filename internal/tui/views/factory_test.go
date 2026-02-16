@@ -15,6 +15,26 @@ func TestNewFactory(t *testing.T) {
 	}
 }
 
+func TestFactoryNewSplash(t *testing.T) {
+	f := views.NewFactory()
+	vm := f.NewSplash("http://localhost:8080")
+	if vm == nil {
+		t.Fatal("NewSplash returned nil")
+	}
+	_ = vm.View()
+	_ = vm.HelpText()
+	if vm.Done() {
+		t.Error("new splash should not be done")
+	}
+	if vm.Failed() {
+		t.Error("new splash should not have failed")
+	}
+	if vm.ErrorMessage() != "" {
+		t.Error("new splash should have empty error message")
+	}
+	_, _ = vm.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+}
+
 func TestFactoryNewLogin(t *testing.T) {
 	f := views.NewFactory()
 	vm := f.NewLogin(nil)

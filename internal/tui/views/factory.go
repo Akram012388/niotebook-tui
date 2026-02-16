@@ -15,6 +15,11 @@ func NewFactory() *Factory {
 	return &Factory{}
 }
 
+func (f *Factory) NewSplash(serverURL string) app.SplashViewModel {
+	m := NewSplashModel(serverURL)
+	return &splashAdapter{m}
+}
+
 func (f *Factory) NewLogin(c *client.Client) app.ViewModel {
 	m := NewLoginModel(c)
 	return &loginAdapter{m}
@@ -131,6 +136,23 @@ func (a *helpAdapter) View() string      { return a.model.View() }
 func (a *helpAdapter) HelpText() string  { return a.model.HelpText() }
 func (a *helpAdapter) Dismissed() bool   { return a.model.Dismissed() }
 func (a *helpAdapter) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
+	m, cmd := a.model.Update(msg)
+	a.model = m
+	return a, cmd
+}
+
+// splashAdapter wraps SplashModel to implement app.SplashViewModel.
+type splashAdapter struct {
+	model SplashModel
+}
+
+func (a *splashAdapter) Init() tea.Cmd        { return a.model.Init() }
+func (a *splashAdapter) View() string         { return a.model.View() }
+func (a *splashAdapter) HelpText() string     { return a.model.HelpText() }
+func (a *splashAdapter) Done() bool           { return a.model.Done() }
+func (a *splashAdapter) Failed() bool         { return a.model.Failed() }
+func (a *splashAdapter) ErrorMessage() string { return a.model.ErrorMessage() }
+func (a *splashAdapter) Update(msg tea.Msg) (app.ViewModel, tea.Cmd) {
 	m, cmd := a.model.Update(msg)
 	a.model = m
 	return a, cmd

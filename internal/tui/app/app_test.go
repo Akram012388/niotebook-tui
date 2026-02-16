@@ -40,8 +40,15 @@ type stubHelp struct{ stubViewModel }
 
 func (s *stubHelp) Dismissed() bool { return false }
 
+type stubSplash struct{ stubViewModel }
+
+func (s *stubSplash) Done() bool         { return false }
+func (s *stubSplash) Failed() bool       { return false }
+func (s *stubSplash) ErrorMessage() string { return "" }
+
 type stubFactory struct{}
 
+func (f *stubFactory) NewSplash(_ string) app.SplashViewModel             { return &stubSplash{} }
 func (f *stubFactory) NewLogin(_ *client.Client) app.ViewModel            { return &stubViewModel{} }
 func (f *stubFactory) NewRegister(_ *client.Client) app.ViewModel         { return &stubViewModel{} }
 func (f *stubFactory) NewTimeline(_ *client.Client) app.TimelineViewModel { return &stubTimeline{} }

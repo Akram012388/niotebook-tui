@@ -14,7 +14,8 @@ import (
 type View int
 
 const (
-	ViewLogin View = iota
+	ViewSplash View = iota
+	ViewLogin
 	ViewRegister
 	ViewTimeline
 	ViewProfile
@@ -49,6 +50,14 @@ type ProfileViewModel interface {
 	Dismissed() bool
 }
 
+// SplashViewModel is the interface for the splash screen.
+type SplashViewModel interface {
+	ViewModel
+	Done() bool
+	Failed() bool
+	ErrorMessage() string
+}
+
 // TimelineViewModel is the interface for the timeline view.
 type TimelineViewModel interface {
 	ViewModel
@@ -58,6 +67,7 @@ type TimelineViewModel interface {
 // ViewFactory creates view sub-models. This breaks the import cycle between
 // the app and views packages.
 type ViewFactory interface {
+	NewSplash(serverURL string) SplashViewModel
 	NewLogin(c *client.Client) ViewModel
 	NewRegister(c *client.Client) ViewModel
 	NewTimeline(c *client.Client) TimelineViewModel

@@ -42,3 +42,7 @@ type MsgSwitchToLogin struct{}
 // Generic messages
 type MsgAPIError struct{ Message string }
 type MsgStatusClear struct{}
+
+// Server connection messages (splash screen)
+type MsgServerConnected struct{}
+type MsgServerFailed struct{ Err string }
