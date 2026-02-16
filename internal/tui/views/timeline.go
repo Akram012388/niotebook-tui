@@ -48,6 +48,14 @@ func (m *TimelineModel) SetPosts(posts []models.Post) {
 	m.scrollTop = 0
 }
 
+// LoadMockPosts loads hardcoded mock posts for dev/testing mode.
+func (m *TimelineModel) LoadMockPosts() {
+	m.posts = GenerateMockPosts()
+	m.cursor = 0
+	m.scrollTop = 0
+	m.hasMore = false
+}
+
 // CursorIndex returns the current cursor position.
 func (m TimelineModel) CursorIndex() int {
 	return m.cursor
