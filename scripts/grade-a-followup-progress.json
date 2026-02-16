@@ -27,17 +27,17 @@
       "error": null
     },
     "4": {
-      "status": "running",
+      "status": "completed",
       "attempts": 2,
       "started": "2026-02-16T09:51:17Z",
-      "finished": null,
+      "finished": "2026-02-16T09:53:12Z",
       "error": null
     },
     "5": {
-      "status": "pending",
-      "attempts": 0,
-      "started": null,
-      "finished": null,
+      "status": "completed",
+      "attempts": 1,
+      "started": "2026-02-16T09:53:12Z",
+      "finished": "2026-02-16T09:55:40Z",
       "error": null
     }
   }
