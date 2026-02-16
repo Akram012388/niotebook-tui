@@ -1,11 +1,11 @@
 #!/opt/homebrew/bin/bash
 set -euo pipefail
 
-# Niotebook MVP Sprint Runner
-# Executes the 24-task MVP implementation plan using non-interactive Claude Code sessions.
+# Niotebook Hardening Sprint Runner
+# Fixes all critical and important issues from the B+ code review to achieve Grade-A.
 # Usage:
-#   ./scripts/sprint.sh            # Fresh start
-#   ./scripts/sprint.sh --resume   # Resume from progress file
+#   ./scripts/hardening-sprint.sh            # Fresh start
+#   ./scripts/hardening-sprint.sh --resume   # Resume from progress file
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -13,12 +13,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 # Ensure Homebrew PostgreSQL is on PATH (keg-only on macOS)
 export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
 
-PLAN_FILE="docs/vault/04-plans/2026-02-16-mvp-implementation.md"
+PLAN_FILE="docs/plans/2026-02-16-hardening-sprint-implementation.md"
 SPRINT_DATE=$(date +%Y-%m-%d)
-LOG_DIR="$PROJECT_DIR/logs/sprint-$SPRINT_DATE"
-PROGRESS_FILE="$SCRIPT_DIR/sprint-progress.json"
-BRANCH_NAME="mvp-sprint"
-TOTAL_TASKS=24
+LOG_DIR="$PROJECT_DIR/logs/hardening-sprint-$SPRINT_DATE"
+PROGRESS_FILE="$SCRIPT_DIR/hardening-sprint-progress.json"
+BRANCH_NAME="hardening-sprint"
+BASE_BRANCH="mvp-sprint"
+TOTAL_TASKS=12
 TASK_TIMEOUT=900           # 15 minutes in seconds
 
 RED='\033[0;31m'
@@ -29,67 +30,45 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-log()      { echo -e "${GREEN}[sprint]${NC} $(date +%H:%M:%S) $*"; }
-warn()     { echo -e "${YELLOW}[sprint]${NC} $(date +%H:%M:%S) $*"; }
-err()      { echo -e "${RED}[sprint]${NC} $(date +%H:%M:%S) $*" >&2; }
+log()      { echo -e "${GREEN}[hardening]${NC} $(date +%H:%M:%S) $*"; }
+warn()     { echo -e "${YELLOW}[hardening]${NC} $(date +%H:%M:%S) $*"; }
+err()      { echo -e "${RED}[hardening]${NC} $(date +%H:%M:%S) $*" >&2; }
 task_log() { echo -e "${CYAN}[task $1]${NC} $(date +%H:%M:%S) ${*:2}"; }
 
 # ── Dependency Graph ────────────────────────────────────────────────
-# Each task maps to a space-separated list of tasks it depends on.
-# Derived from docs/vault/04-plans/2026-02-16-mvp-implementation.md "Dependency Graph"
+# Phase 1: Tasks 1-3 (no deps — parallel safe)
+# Phase 2: Tasks 4-7 (depend on all of Phase 1)
+# Phase 3: Tasks 8-11 (depend on all of Phase 2)
+# Phase 4: Task 12 (depends on all of Phase 3)
 declare -A TASK_DEPS=(
   [1]=""
-  [2]="1"
-  [3]="1"
-  [4]="1 2"
-  [5]="3 4"
-  [6]="2"
-  [7]="6"
-  [8]="7"
-  [9]="7"
-  [10]="1"
-  [11]="1"
-  [12]="7 8 9 10 11"
-  [13]="12"
-  [14]="13"
-  [15]="1"
-  [16]="15 2"
-  [17]="2"
-  [18]="2"
-  [19]="16 18"
-  [20]="19 17"
-  [21]="20"
-  [22]="20"
-  [23]="19 20 21 22"
-  [24]="14 23"
+  [2]=""
+  [3]=""
+  [4]="1 2 3"
+  [5]="1 2 3"
+  [6]="1 2 3"
+  [7]="1 2 3"
+  [8]="4 5 6 7"
+  [9]="4 5 6 7"
+  [10]="4 5 6 7"
+  [11]="4 5 6 7"
+  [12]="8 9 10 11"
 )
 
 # Task names for display
 declare -A TASK_NAMES=(
-  [1]="Initialize Go Module and Directory Structure"
-  [2]="Shared Domain Models and Build Package"
-  [3]="Database Migrations"
-  [4]="Database Connection and Store Interfaces"
-  [5]="Store Implementations"
-  [6]="Validation Functions"
-  [7]="Auth Service"
-  [8]="Post Service"
-  [9]="User Service"
-  [10]="JWT Auth Middleware"
-  [11]="Supporting Middleware"
-  [12]="HTTP Handlers"
-  [13]="Server Router and Wiring"
-  [14]="Server Binary Entry Point"
-  [15]="Config Loading"
-  [16]="HTTP Client Wrapper"
-  [17]="TUI Components — Relative Time and Post Card"
-  [18]="TUI Message Types"
-  [19]="Login and Register Views"
-  [20]="Timeline View"
-  [21]="Compose Modal"
-  [22]="Profile View and Help Overlay"
-  [23]="Root AppModel and TUI Binary"
-  [24]="GitHub Actions CI and Final Verification"
+  [1]="Fix unchecked type assertions in auth middleware"
+  [2]="Add JWT secret length validation"
+  [3]="Fix unchecked type assertions in TUI app"
+  [4]="Make CORS origin configurable"
+  [5]="Add HTTP client timeout and network retry"
+  [6]="Fix window resize command propagation"
+  [7]="Add XDG_CONFIG_HOME support"
+  [8]="Add middleware tests (recovery, CORS, logging)"
+  [9]="Add TUI component tests"
+  [10]="Add TUI view tests"
+  [11]="Add TUI app integration tests"
+  [12]="CI pipeline hardening"
 )
 
 # ── Progress File Helpers ───────────────────────────────────────────
@@ -196,7 +175,7 @@ skip_dependents() {
 # ── Pre-Flight Checks ──────────────────────────────────────────────
 preflight() {
   echo ""
-  echo -e "${BOLD}=== Niotebook MVP Sprint Runner ===${NC}"
+  echo -e "${BOLD}=== Niotebook Hardening Sprint Runner ===${NC}"
   echo ""
   log "Running pre-flight checks..."
   local ok=true
@@ -218,14 +197,6 @@ preflight() {
   fi
 
   # Databases
-  local user
-  user=$(whoami)
-  if psql -lqt 2>/dev/null | cut -d\| -f1 | grep -qw niotebook_dev; then
-    log "  [✓] niotebook_dev database"
-  else
-    err "  [✗] niotebook_dev database missing"
-    ok=false
-  fi
   if psql -lqt 2>/dev/null | cut -d\| -f1 | grep -qw niotebook_test; then
     log "  [✓] niotebook_test database"
   else
@@ -234,7 +205,7 @@ preflight() {
   fi
 
   # Tools
-  for tool in migrate golangci-lint jq claude; do
+  for tool in golangci-lint jq claude; do
     if command -v "$tool" >/dev/null 2>&1; then
       log "  [✓] $tool"
     else
@@ -260,9 +231,17 @@ preflight() {
     ok=false
   fi
 
+  # Verify MVP sprint codebase compiles
+  if go build ./... 2>/dev/null; then
+    log "  [✓] Codebase compiles"
+  else
+    err "  [✗] Codebase does not compile — fix build errors first"
+    ok=false
+  fi
+
   if [[ "$ok" == false ]]; then
     echo ""
-    err "Pre-flight checks failed. Fix issues above or run ./scripts/sprint-bootstrap.sh"
+    err "Pre-flight checks failed. Fix issues above before running."
     exit 1
   fi
 
@@ -285,8 +264,8 @@ setup_branch() {
     log "Switching to existing branch $BRANCH_NAME"
     git checkout "$BRANCH_NAME"
   else
-    log "Creating branch $BRANCH_NAME from main"
-    git checkout -b "$BRANCH_NAME"
+    log "Creating branch $BRANCH_NAME from $BASE_BRANCH"
+    git checkout -b "$BRANCH_NAME" "$BASE_BRANCH"
   fi
 }
 
@@ -306,23 +285,19 @@ verify_task() {
     ((errors++))
   fi
 
-  # 2. Tests pass (skip for task 1 which has no tests)
-  if [[ "$task_num" -gt 1 ]]; then
-    if go test ./... -v -race -timeout 120s >> "$verify_log" 2>&1; then
-      task_log "$task_num" "  Tests: PASS"
-    else
-      task_log "$task_num" "  Tests: FAIL"
-      ((errors++))
-    fi
+  # 2. Tests pass (all hardening tasks have tests)
+  if go test ./... -v -race -timeout 120s >> "$verify_log" 2>&1; then
+    task_log "$task_num" "  Tests: PASS"
   else
-    task_log "$task_num" "  Tests: SKIPPED (task 1)"
+    task_log "$task_num" "  Tests: FAIL"
+    ((errors++))
   fi
 
   # 3. Auto-commit any leftover uncommitted changes
   if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
     task_log "$task_num" "  Auto-committing remaining changes..."
     git add -A
-    git commit -m "chore: auto-commit remaining changes from task $task_num" --no-verify 2>/dev/null || true
+    git commit -m "chore: auto-commit remaining changes from hardening task $task_num" --no-verify 2>/dev/null || true
   fi
 
   return "$errors"
@@ -339,7 +314,7 @@ run_task() {
 
   # Build the prompt
   local prompt
-  prompt="You are implementing the Niotebook MVP.
+  prompt="You are hardening the Niotebook codebase — fixing critical and important issues from a code review.
 
 Your working directory is $(pwd).
 
@@ -362,21 +337,18 @@ IMPORTANT:
 The .env file is at the project root with database connection details.
 Source it if needed: source .env"
 
-  # Check if PostgreSQL is needed (tasks 3+)
-  if [[ "$task_num" -ge 3 ]]; then
+  # Check PostgreSQL is alive for tests
+  if ! pg_isready -q 2>/dev/null; then
+    task_log "$task_num" "PostgreSQL not responding, attempting restart..."
+    brew services restart postgresql@15 2>/dev/null || true
+    sleep 3
     if ! pg_isready -q 2>/dev/null; then
-      task_log "$task_num" "PostgreSQL not responding, attempting restart..."
-      brew services restart postgresql@15 2>/dev/null || true
-      sleep 3
-      if ! pg_isready -q 2>/dev/null; then
-        err "PostgreSQL is down and could not be restarted"
-        return 1
-      fi
+      err "PostgreSQL is down and could not be restarted"
+      return 1
     fi
   fi
 
   # Run Claude in non-interactive mode with timeout
-  # macOS lacks `timeout`, so we use a background process + kill approach
   local exit_code=0
   CLAUDECODE= claude \
     -p "$prompt" \
@@ -437,11 +409,12 @@ generate_summary() {
   started_at=$(jq -r '.started_at' "$PROGRESS_FILE")
 
   cat > "$summary_file" <<SUMMARY
-# Sprint Summary — $SPRINT_DATE
+# Hardening Sprint Summary — $SPRINT_DATE
 
 | Metric | Value |
 |--------|-------|
 | Branch | $BRANCH_NAME |
+| Base | $BASE_BRANCH |
 | Started | $started_at |
 | Finished | $finished_at |
 | Completed | $completed / $TOTAL_TASKS |
@@ -485,7 +458,7 @@ SUMMARY
         echo "" >> "$summary_file"
         echo "Error: $error" >> "$summary_file"
         echo "" >> "$summary_file"
-        echo "Log: \`logs/sprint-$SPRINT_DATE/task-$(printf '%02d' "$i").log\`" >> "$summary_file"
+        echo "Log: \`logs/hardening-sprint-$SPRINT_DATE/task-$(printf '%02d' "$i").log\`" >> "$summary_file"
         echo "" >> "$summary_file"
       fi
     done
@@ -509,7 +482,7 @@ print_report() {
   done
 
   echo ""
-  echo -e "${BOLD}=== Sprint Complete ===${NC}"
+  echo -e "${BOLD}=== Hardening Sprint Complete ===${NC}"
   echo ""
   echo -e "  Completed: ${GREEN}$completed${NC} / $TOTAL_TASKS"
   echo -e "  Failed:    ${RED}$failed${NC}"
@@ -518,14 +491,15 @@ print_report() {
   echo -e "  Progress:  $PROGRESS_FILE"
   echo -e "  Logs:      $LOG_DIR/"
   echo -e "  Summary:   $LOG_DIR/summary.md"
-  echo -e "  Branch:    $BRANCH_NAME"
+  echo -e "  Branch:    $BRANCH_NAME (from $BASE_BRANCH)"
   echo ""
 
   if (( failed == 0 && skipped == 0 )); then
-    echo -e "  ${GREEN}${BOLD}All $TOTAL_TASKS tasks completed successfully!${NC}"
-    echo -e "  Next: review the branch and merge when ready."
+    echo -e "  ${GREEN}${BOLD}All $TOTAL_TASKS hardening tasks completed successfully!${NC}"
+    echo -e "  Next: run code review to verify Grade-A status."
   else
     echo -e "  ${YELLOW}Review failed/skipped tasks in the summary and logs.${NC}"
+    echo -e "  Re-run with --resume to retry failed tasks."
   fi
   echo ""
 }
@@ -550,7 +524,7 @@ main() {
 
   # Initialize or load progress
   if [[ "$resume" == true && -f "$PROGRESS_FILE" ]]; then
-    log "Resuming sprint from progress file..."
+    log "Resuming hardening sprint from progress file..."
     # Reset failed and skipped tasks to pending for retry
     for i in $(seq 1 $TOTAL_TASKS); do
       local status
@@ -569,7 +543,7 @@ main() {
   fi
 
   echo ""
-  log "Starting sprint — $TOTAL_TASKS tasks on branch $BRANCH_NAME"
+  log "Starting hardening sprint — $TOTAL_TASKS tasks on branch $BRANCH_NAME"
   echo ""
 
   # Main loop
@@ -617,7 +591,7 @@ main() {
       else
         # Mark as failed, skip dependents
         set_task_status "$task_num" "failed"
-        set_task_error "$task_num" "failed after 2 attempts — check logs/sprint-$SPRINT_DATE/task-$(printf '%02d' "$task_num").log"
+        set_task_error "$task_num" "failed after 2 attempts — check logs/hardening-sprint-$SPRINT_DATE/task-$(printf '%02d' "$task_num").log"
         task_log "$task_num" "${RED}FAILED after 2 attempts${NC}"
         skip_dependents "$task_num"
       fi

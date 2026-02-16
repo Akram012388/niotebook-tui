@@ -1,0 +1,56 @@
+package handler
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/Akram012388/niotebook-tui/internal/models"
+)
+
+func writeJSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(data)
+}
+
+func writeAPIError(w http.ResponseWriter, err error) {
+	var apiErr *models.APIError
+	if errors.As(err, &apiErr) {
+		status := errorCodeToHTTPStatus(apiErr.Code)
+		writeJSON(w, status, map[string]any{"error": apiErr})
+		return
+	}
+	writeJSON(w, http.StatusInternalServerError, map[string]any{
+		"error": models.APIError{
+			Code:    models.ErrCodeInternal,
+			Message: "something went wrong, please try again",
+		},
+	})
+}
+
+func errorCodeToHTTPStatus(code string) int {
+	switch code {
+	case models.ErrCodeValidation, models.ErrCodeContentLong:
+		return http.StatusBadRequest
+	case models.ErrCodeUnauthorized, models.ErrCodeTokenExpired:
+		return http.StatusUnauthorized
+	case models.ErrCodeForbidden:
+		return http.StatusForbidden
+	case models.ErrCodeNotFound:
+		return http.StatusNotFound
+	case models.ErrCodeConflict:
+		return http.StatusConflict
+	case models.ErrCodeRateLimited:
+		return http.StatusTooManyRequests
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func decodeBody(w http.ResponseWriter, r *http.Request, v any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
+}
